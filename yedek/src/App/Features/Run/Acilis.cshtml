@@ -1,0 +1,296 @@
+@page
+@model App.Features.Run.AcilisModel
+@{
+    ViewData["Title"] = "Devir (Acilis)";
+}
+
+<section class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+    <div class="relative overflow-hidden rounded-[32px] border border-[color:var(--line)] bg-white/80 p-8 shadow-[0_24px_60px_rgba(27,23,18,0.12)] backdrop-blur">
+        <div class="absolute inset-0 bg-gradient-to-br from-[color:var(--accent-2)]/20 via-transparent to-transparent"></div>
+        <div class="relative">
+            <div class="text-xs uppercase tracking-[0.4em] text-[color:var(--accent)]">Devir katmani</div>
+            <h1 class="mt-3 text-3xl font-semibold leading-tight md:text-4xl">2025 kapanis envanter acilisi</h1>
+            <p class="mt-4 text-sm leading-6 text-[color:var(--muted)]">
+                Envanter tarihindeki stoklar ters fatura aging ile katmanlara bolunur ve
+                bkm.fifo_StokMaliyetHavuzu tablosuna ACILIS olarak yazilir.
+            </p>
+            <div class="mt-6 flex flex-wrap gap-2 text-xs text-[color:var(--muted)]">
+                <span class="rounded-full border border-[color:var(--line)] bg-white/80 px-3 py-1">bkm.sp_fifo_StokMaliyetAcilis</span>
+                <span class="rounded-full border border-[color:var(--line)] bg-white/80 px-3 py-1">bkm.fifo_StokEnvanter</span>
+                <span class="rounded-full border border-[color:var(--line)] bg-white/80 px-3 py-1">bkm.fifo_StokMaliyetSorunlu</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="rounded-[32px] border border-[color:var(--line)] bg-white/80 p-6 shadow-[0_20px_50px_rgba(27,23,18,0.1)] backdrop-blur">
+        <div class="text-xs uppercase tracking-[0.3em] text-[color:var(--muted)]">Acilis notlari</div>
+        <div class="mt-2 text-lg font-semibold">Kritik hatirlatmalar</div>
+        <div class="mt-5 space-y-4 text-sm text-[color:var(--muted)]">
+            <div class="flex items-start gap-3">
+                <span class="mt-1 h-2 w-2 rounded-full bg-[color:var(--accent)]"></span>
+                <div>
+                    <div class="font-semibold text-[color:var(--ink)]">Tek seferlik</div>
+                    <div>Yil veya ay kapanisi icin bir kez calistirilir.</div>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <span class="mt-1 h-2 w-2 rounded-full bg-[color:var(--accent-2)]"></span>
+                <div>
+                    <div class="font-semibold text-[color:var(--ink)]">Eksik maliyetler</div>
+                    <div>Eksik kalanlar bkm.fifo_StokMaliyetSorunlu tablosuna yazilir.</div>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <span class="mt-1 h-2 w-2 rounded-full bg-[color:var(--accent-3)]"></span>
+                <div>
+                    <div class="font-semibold text-[color:var(--ink)]">Tek urun</div>
+                    <div>Urun ID ile parca parca guncelleme yapilabilir.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="rounded-3xl border border-[color:var(--line)] bg-white/80 p-6 shadow-[0_20px_50px_rgba(27,23,18,0.08)] backdrop-blur">
+    <form method="post" class="grid gap-6" data-run-form="acilis">
+        <div class="grid gap-4 lg:grid-cols-2">
+            <label class="text-sm text-[color:var(--muted)]">
+                <span>Envanter tarihi</span>
+                <input type="date" asp-for="EnvanterTarihi" class="mt-2 w-full rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-sm text-[color:var(--ink)] shadow-sm focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]/20" />
+            </label>
+            <label class="text-sm text-[color:var(--muted)]">
+                <span>Urun ID (opsiyonel)</span>
+                <input type="number" asp-for="StkId" placeholder="392" class="mt-2 w-full rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-sm text-[color:var(--ink)] shadow-sm focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]/20" />
+            </label>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+            <button class="inline-flex items-center justify-center rounded-full bg-[color:var(--accent)] px-5 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(31,111,92,0.28)] transition hover:-translate-y-0.5" type="submit" data-run-submit>
+                Devir olustur
+            </button>
+            <span class="text-xs text-[color:var(--muted)]">Yil/ay kapanisinda bir kez calistirilir.</span>
+        </div>
+
+        <div class="rounded-2xl border border-[color:var(--line)] bg-[color:var(--bg)]/70 p-4">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <div class="text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">Zaman cizelgesi</div>
+                    <div class="text-sm font-semibold">Devir acilisi akisi</div>
+                </div>
+                <span class="rounded-full border border-[color:var(--line)] bg-white/80 px-3 py-1 text-[11px] text-[color:var(--muted)]" data-run-status>Hazir</span>
+            </div>
+            <ol class="run-timeline relative mt-4 space-y-4 border-l border-[color:var(--line)] pl-6" data-run-timeline>
+                <li class="relative rounded-2xl border border-[color:var(--line)] bg-white/90 p-4" data-step data-step-key="envanter" data-status="idle">
+                    <span class="absolute -left-[11px] top-5 h-3 w-3 rounded-full border border-[color:var(--line)] bg-white" data-dot></span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold">Envanter snapshot</div>
+                        <span class="rounded-full border border-[color:var(--line)] px-2 py-0.5 text-[10px] text-[color:var(--muted)]" data-step-state>Bekliyor</span>
+                    </div>
+                    <div class="mt-2 text-xs text-[color:var(--muted)]">Stoklar bkm.fifo_StokEnvanter tablosuna yazilir.</div>
+                </li>
+                <li class="relative rounded-2xl border border-[color:var(--line)] bg-white/90 p-4" data-step data-step-key="alis" data-status="idle">
+                    <span class="absolute -left-[11px] top-5 h-3 w-3 rounded-full border border-[color:var(--line)] bg-white" data-dot></span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold">Alislar toplanir</div>
+                        <span class="rounded-full border border-[color:var(--line)] px-2 py-0.5 text-[10px] text-[color:var(--muted)]" data-step-state>Bekliyor</span>
+                    </div>
+                    <div class="mt-2 text-xs text-[color:var(--muted)]">Ters fatura aging icin alis hareketleri hazirlanir.</div>
+                </li>
+                <li class="relative rounded-2xl border border-[color:var(--line)] bg-white/90 p-4" data-step data-step-key="katman" data-status="idle">
+                    <span class="absolute -left-[11px] top-5 h-3 w-3 rounded-full border border-[color:var(--line)] bg-white" data-dot></span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold">Ters FIFO katman</div>
+                        <span class="rounded-full border border-[color:var(--line)] px-2 py-0.5 text-[10px] text-[color:var(--muted)]" data-step-state>Bekliyor</span>
+                    </div>
+                    <div class="mt-2 text-xs text-[color:var(--muted)]">Acilis katmanlari hesaplanir ve havuza yazilir.</div>
+                </li>
+                <li class="relative rounded-2xl border border-[color:var(--line)] bg-white/90 p-4" data-step data-step-key="sorun" data-status="idle">
+                    <span class="absolute -left-[11px] top-5 h-3 w-3 rounded-full border border-[color:var(--line)] bg-white" data-dot></span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold">Sorun kaydi</div>
+                        <span class="rounded-full border border-[color:var(--line)] px-2 py-0.5 text-[10px] text-[color:var(--muted)]" data-step-state>Bekliyor</span>
+                    </div>
+                    <div class="mt-2 text-xs text-[color:var(--muted)]">Eksik maliyetler sorun listesine eklenir.</div>
+                </li>
+            </ol>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Error))
+        {
+            <div class="rounded-2xl border border-[color:var(--accent-2)]/40 bg-[color:var(--accent-2)]/10 px-4 py-3 text-sm text-[color:var(--accent-2)]">
+                @Model.Error
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.Status))
+        {
+            <div class="rounded-2xl border border-[color:var(--accent)]/40 bg-[color:var(--accent)]/10 px-4 py-3 text-sm text-[color:var(--accent)]">
+                @Model.Status
+            </div>
+        }
+    </form>
+</section>
+
+
+@section Scripts
+{
+    <script>
+        (() => {
+            const form = document.querySelector("[data-run-form='acilis']");
+            if (!form) return;
+            const statusPill = form.querySelector("[data-run-status]");
+            const submitButton = form.querySelector("[data-run-submit]");
+            const steps = Array.from(form.querySelectorAll("[data-step]"));
+            const timeline = form.querySelector("[data-run-timeline]");
+            if (!statusPill || !submitButton || !timeline || steps.length === 0) return;
+
+            const labels = {
+                idle: "Bekliyor",
+                active: "Calisiyor",
+                done: "Tamam",
+                skipped: "Atlandi",
+                error: "Hata"
+            };
+
+            const runLabels = {
+                READY: "Hazir",
+                QUEUED: "Kuyrukta",
+                RUNNING: "Calisiyor",
+                DONE: "Tamamlandi",
+                ERROR: "Hata"
+            };
+
+            const setStatus = (item, status) => {
+                item.dataset.status = status;
+                const badge = item.querySelector("[data-step-state]");
+                if (badge) badge.textContent = labels[status] || labels.idle;
+            };
+
+            const lock = () => {
+                submitButton.classList.add("opacity-70", "cursor-wait");
+                submitButton.disabled = true;
+            };
+
+            const unlock = () => {
+                submitButton.classList.remove("opacity-70", "cursor-wait");
+                submitButton.disabled = false;
+                form.dataset.inflight = "false";
+            };
+
+            const setRunStatus = (status, message) => {
+                const label = runLabels[status] || runLabels.READY;
+                statusPill.textContent = message ? `${label} - ${message}` : label;
+            };
+
+            const mapStepStatus = (status) => {
+                switch (status) {
+                    case "RUNNING":
+                        return "active";
+                    case "DONE":
+                        return "done";
+                    case "SKIPPED":
+                        return "skipped";
+                    case "ERROR":
+                        return "error";
+                    default:
+                        return "idle";
+                }
+            };
+
+            const applySteps = (serverSteps) => {
+                const byKey = new Map(serverSteps.map((step) => [step.stepKey, step]));
+                steps.forEach((step) => {
+                    const key = step.dataset.stepKey;
+                    if (!key) return;
+                    const match = byKey.get(key);
+                    if (!match) return;
+                    setStatus(step, mapStepStatus(match.status));
+                });
+            };
+
+            const buildUrl = (handler, runId) => {
+                const url = new URL(form.action, window.location.origin);
+                url.searchParams.set("handler", handler);
+                if (runId) url.searchParams.set("runId", runId);
+                return url.toString();
+            };
+
+            let pollTimer = null;
+            let activeRunId = null;
+
+            const stopPolling = () => {
+                if (pollTimer) {
+                    window.clearTimeout(pollTimer);
+                    pollTimer = null;
+                }
+            };
+
+            const poll = async () => {
+                if (!activeRunId) return;
+                try {
+                    const response = await fetch(buildUrl("Log", activeRunId), {
+                        headers: { "Accept": "application/json" }
+                    });
+                    if (!response.ok) throw new Error("Log okunamadi");
+                    const data = await response.json();
+                    if (!data.ok) throw new Error(data.error || "Log okunamadi");
+
+                    setRunStatus(data.status, data.message);
+                    if (Array.isArray(data.steps)) applySteps(data.steps);
+
+                    if (data.status === "DONE" || data.status === "ERROR") {
+                        stopPolling();
+                        activeRunId = null;
+                        unlock();
+                        return;
+                    }
+                    pollTimer = window.setTimeout(poll, 1000);
+                } catch (err) {
+                    stopPolling();
+                    activeRunId = null;
+                    setRunStatus("ERROR", "Log hatasi");
+                    unlock();
+                }
+            };
+
+            const reset = () => {
+                steps.forEach((step) => setStatus(step, "idle"));
+                setRunStatus("READY");
+            };
+
+            reset();
+            unlock();
+
+            form.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                if (form.dataset.inflight === "true") return;
+
+                form.dataset.inflight = "true";
+                lock();
+                reset();
+                setRunStatus("QUEUED");
+
+                try {
+                    const response = await fetch(buildUrl("Start"), {
+                        method: "POST",
+                        body: new FormData(form),
+                        headers: { "X-Requested-With": "XMLHttpRequest" }
+                    });
+                    const data = await response.json();
+                    if (!response.ok || !data.ok) {
+                        const message = data && data.error ? data.error : "Baslatma hatasi";
+                        throw new Error(message);
+                    }
+
+                    activeRunId = data.runId;
+                    stopPolling();
+                    pollTimer = window.setTimeout(poll, 500);
+                } catch (err) {
+                    setRunStatus("ERROR", err.message);
+                    unlock();
+                }
+            });
+        })();
+    </script>
+}
+

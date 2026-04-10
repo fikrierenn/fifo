@@ -1,0 +1,349 @@
+@page
+@model App.Features.Ortalama.AySonuModel
+@{
+    ViewData["Title"] = "Ortalama Aylik Maliyet";
+}
+
+<section class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+    <div class="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-8 shadow-lg">
+        <div class="absolute inset-0 bg-gradient-to-br from-violet-50 via-transparent to-transparent"></div>
+        <div class="relative">
+            <div class="text-xs font-medium uppercase tracking-widest text-violet-600">Ortalama Maliyet</div>
+            <h1 class="mt-3 text-3xl font-semibold leading-tight text-gray-900">Ay Sonu Hesaplama</h1>
+            <p class="mt-4 text-sm leading-6 text-gray-500">
+                Secilen ay icin ortalama birim maliyet hesaplanir ve
+                OrtalamaAylikMaliyet tablosuna yazilir.
+            </p>
+            <div class="mt-6 flex flex-wrap gap-2 text-xs text-gray-400">
+                <span class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1">sp_Ortalama_AylikHesapla</span>
+                <span class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1">OrtalamaAylikMaliyet</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
+        <div class="text-xs font-medium uppercase tracking-widest text-gray-400">Onemli notlar</div>
+        <div class="mt-2 text-lg font-semibold text-gray-900">Kullanim bilgisi</div>
+        <div class="mt-5 space-y-4 text-sm text-gray-500">
+            <div class="flex items-start gap-3">
+                <span class="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-violet-500"></span>
+                <div>
+                    <div class="font-semibold text-gray-900">Ilk ay icin AcilisTarihi zorunlu</div>
+                    <div>Ilk hesaplamada acilis envanter tarihini secin.</div>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <span class="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-amber-500"></span>
+                <div>
+                    <div class="font-semibold text-gray-900">Sonraki aylar otomatik devir</div>
+                    <div>AcilisTarihi bos birakilirsa onceki aydan devir alinir.</div>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <span class="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-emerald-500"></span>
+                <div>
+                    <div class="font-semibold text-gray-900">Tek urun secimi</div>
+                    <div>StkId ile belirli bir urun icin hesaplama yapilabilir.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
+    <form method="post" class="grid gap-6" data-run-form="ortalama">
+        <div class="grid gap-4 lg:grid-cols-4">
+            <label class="block text-sm text-gray-600">
+                <span class="font-medium">Yil</span>
+                <input type="number" asp-for="Yil" min="2020" max="2099"
+                       class="mt-2 block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20" />
+            </label>
+            <label class="block text-sm text-gray-600">
+                <span class="font-medium">Ay</span>
+                <select asp-for="Ay"
+                        class="mt-2 block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20">
+                    <option value="1">1 - Ocak</option>
+                    <option value="2">2 - Subat</option>
+                    <option value="3">3 - Mart</option>
+                    <option value="4">4 - Nisan</option>
+                    <option value="5">5 - Mayis</option>
+                    <option value="6">6 - Haziran</option>
+                    <option value="7">7 - Temmuz</option>
+                    <option value="8">8 - Agustos</option>
+                    <option value="9">9 - Eylul</option>
+                    <option value="10">10 - Ekim</option>
+                    <option value="11">11 - Kasim</option>
+                    <option value="12">12 - Aralik</option>
+                </select>
+            </label>
+            <label class="block text-sm text-gray-600">
+                <span class="font-medium">Acilis tarihi <span class="text-gray-400">(opsiyonel)</span></span>
+                <input type="date" asp-for="AcilisTarihi"
+                       class="mt-2 block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20" />
+            </label>
+            <label class="block text-sm text-gray-600">
+                <span class="font-medium">StkId <span class="text-gray-400">(opsiyonel)</span></span>
+                <input type="number" asp-for="StkId" placeholder="392"
+                       class="mt-2 block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20" />
+            </label>
+        </div>
+
+        <div class="rounded-lg border border-violet-100 bg-violet-50/50 px-4 py-2.5 text-xs text-violet-700">
+            Ilk ay icin AcilisTarihi gereklidir. Sonraki aylar onceki aydan otomatik devir alir.
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+            <button type="submit"
+                    class="inline-flex items-center justify-center rounded-full bg-violet-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-600/25 transition hover:-translate-y-0.5 hover:bg-violet-700 active:translate-y-0"
+                    data-run-submit>
+                Hesapla
+            </button>
+            <span class="text-xs text-gray-400">Ay sonunda bir kez calistirilir.</span>
+        </div>
+
+        <!-- Timeline -->
+        <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-4">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <div class="text-[11px] font-medium uppercase tracking-widest text-gray-400">Zaman cizelgesi</div>
+                    <div class="text-sm font-semibold text-gray-900">Ortalama hesaplama</div>
+                </div>
+                <span class="rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-medium text-gray-500" data-run-status>Hazir</span>
+            </div>
+
+            <ol class="relative mt-4 space-y-3 border-l-2 border-gray-200 pl-6" data-run-timeline>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="ortalama" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold text-gray-900">Ortalama Hesaplama</div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-400">Agirlikli ortalama maliyet hesaplanir ve OrtalamaAylikMaliyet tablosuna yazilir.</div>
+                </li>
+            </ol>
+        </div>
+
+        <!-- Mesaj alani -->
+        <div class="hidden rounded-xl border px-4 py-3 text-sm" data-run-message></div>
+
+        <!-- Sonuc alani -->
+        <div class="hidden rounded-xl border border-violet-200 bg-violet-50/50 px-5 py-4" data-run-sonuc>
+            <div class="text-xs font-medium uppercase tracking-widest text-violet-600">Sonuc</div>
+            <div class="mt-2 flex items-baseline gap-2">
+                <span class="text-2xl font-bold text-gray-900" data-sonuc-count>0</span>
+                <span class="text-sm text-gray-500">urun hesaplandi</span>
+            </div>
+        </div>
+    </form>
+</section>
+
+@section Scripts
+{
+<script>
+(() => {
+    const form = document.querySelector("[data-run-form='ortalama']");
+    if (!form) return;
+
+    const statusPill  = form.querySelector("[data-run-status]");
+    const submitBtn   = form.querySelector("[data-run-submit]");
+    const steps       = Array.from(form.querySelectorAll("[data-step]"));
+    const msgBox      = form.querySelector("[data-run-message]");
+    const sonucBox    = form.querySelector("[data-run-sonuc]");
+    const sonucCount  = form.querySelector("[data-sonuc-count]");
+
+    const stepLabels = { idle: "Bekliyor", active: "Calisiyor", done: "Tamam", skipped: "Atlandi", error: "Hata" };
+    const runLabels  = { READY: "Hazir", CALISIYOR: "Calisiyor", TAMAMLANDI: "Tamamlandi", HATA: "Hata" };
+
+    const statusColors = {
+        idle:    { border: "border-gray-200",  dot: "bg-gray-300",   badge: "text-gray-400 border-gray-200" },
+        active:  { border: "border-violet-300",dot: "bg-violet-500", badge: "text-violet-600 border-violet-200 bg-violet-50" },
+        done:    { border: "border-green-300", dot: "bg-green-500",  badge: "text-green-600 border-green-200 bg-green-50" },
+        skipped: { border: "border-gray-300",  dot: "bg-gray-400",   badge: "text-gray-500 border-gray-200 bg-gray-50" },
+        error:   { border: "border-red-300",   dot: "bg-red-500",    badge: "text-red-600 border-red-200 bg-red-50" }
+    };
+
+    function setStepStatus(el, status) {
+        const prev = el.dataset.status || "idle";
+        el.dataset.status = status;
+
+        const prevC = statusColors[prev] || statusColors.idle;
+        const newC  = statusColors[status] || statusColors.idle;
+        el.classList.remove(prevC.border);
+        el.classList.add(newC.border);
+
+        const dotInner = el.querySelector("[data-dot-inner]");
+        if (dotInner) { dotInner.classList.remove(prevC.dot); dotInner.classList.add(newC.dot); }
+
+        const badge = el.querySelector("[data-step-state]");
+        if (badge) {
+            badge.className = "rounded-full border px-2 py-0.5 text-[10px] font-medium " + newC.badge;
+            badge.textContent = stepLabels[status] || stepLabels.idle;
+        }
+    }
+
+    function showMessage(text, isError) {
+        if (!msgBox) return;
+        msgBox.classList.remove("hidden", "border-red-200", "bg-red-50", "text-red-600",
+                                "border-green-200", "bg-green-50", "text-green-700");
+        if (isError) {
+            msgBox.classList.add("border-red-200", "bg-red-50", "text-red-600");
+        } else {
+            msgBox.classList.add("border-green-200", "bg-green-50", "text-green-700");
+        }
+        msgBox.textContent = text;
+    }
+
+    function hideMessage() { if (msgBox) msgBox.classList.add("hidden"); }
+    function hideSonuc() { if (sonucBox) sonucBox.classList.add("hidden"); }
+
+    function lock() {
+        submitBtn.disabled = true;
+        submitBtn.classList.add("opacity-60", "cursor-wait");
+    }
+
+    function unlock() {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove("opacity-60", "cursor-wait");
+    }
+
+    function setRunStatus(label) {
+        if (statusPill) statusPill.textContent = label;
+    }
+
+    function mapDurum(d) {
+        if (!d) return "idle";
+        switch (d.toUpperCase()) {
+            case "CALISIYOR": return "active";
+            case "TAMAMLANDI": return "done";
+            case "ATLANDI": return "skipped";
+            case "HATA": return "error";
+            default: return "idle";
+        }
+    }
+
+    function applySteps(adimlar) {
+        const byKey = new Map(adimlar.map(a => [a.adimKodu, a]));
+        steps.forEach(el => {
+            const key = el.dataset.stepKey;
+            const match = byKey.get(key);
+            if (match) setStepStatus(el, mapDurum(match.durum));
+        });
+    }
+
+    function reset() {
+        steps.forEach(el => setStepStatus(el, "idle"));
+        setRunStatus("Hazir");
+        hideMessage();
+        hideSonuc();
+    }
+
+    function buildUrl(handler, params) {
+        const url = new URL(window.location.pathname, window.location.origin);
+        url.searchParams.set("handler", handler);
+        if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+        return url.toString();
+    }
+
+    let pollTimer = null;
+    let activeIslemId = null;
+    let formYil = null;
+    let formAy = null;
+
+    function stopPolling() {
+        if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+    }
+
+    async function fetchSonuc() {
+        try {
+            const resp = await fetch(buildUrl("Sonuc", { yil: formYil, ay: formAy }), {
+                headers: { "Accept": "application/json" }
+            });
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (data.ok && sonucBox && sonucCount) {
+                sonucCount.textContent = data.urunSayisi;
+                sonucBox.classList.remove("hidden");
+            }
+        } catch (_) { /* sonuc gosterilemezse sorun degil */ }
+    }
+
+    async function poll() {
+        if (!activeIslemId) return;
+        try {
+            const resp = await fetch(buildUrl("Durum", { islemId: activeIslemId }), {
+                headers: { "Accept": "application/json" }
+            });
+            if (!resp.ok) throw new Error("Durum okunamadi");
+            const data = await resp.json();
+            if (!data.ok) throw new Error(data.error || "Durum okunamadi");
+
+            setRunStatus(runLabels[data.durum] || data.durum);
+            if (Array.isArray(data.adimlar)) applySteps(data.adimlar);
+
+            if (data.durum === "TAMAMLANDI") {
+                stopPolling();
+                activeIslemId = null;
+                unlock();
+                showMessage(data.aciklama || "Ortalama maliyet hesaplama tamamlandi.", false);
+                setStepStatus(steps[0], "done");
+                await fetchSonuc();
+                return;
+            }
+            if (data.durum === "HATA") {
+                stopPolling();
+                activeIslemId = null;
+                unlock();
+                showMessage(data.aciklama || "Islem sirasinda hata olustu.", true);
+                setStepStatus(steps[0], "error");
+                return;
+            }
+
+            setStepStatus(steps[0], "active");
+            pollTimer = setTimeout(poll, 1000);
+        } catch (err) {
+            stopPolling();
+            activeIslemId = null;
+            setRunStatus("Hata");
+            showMessage("Durum sorgusu basarisiz: " + err.message, true);
+            unlock();
+        }
+    }
+
+    reset();
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (submitBtn.disabled) return;
+
+        lock();
+        reset();
+        setRunStatus("Baslatiliyor...");
+
+        formYil = form.querySelector("[name='Yil']").value;
+        formAy  = form.querySelector("[name='Ay']").value;
+
+        try {
+            const resp = await fetch(buildUrl("Start"), {
+                method: "POST",
+                body: new FormData(form),
+                headers: { "X-Requested-With": "XMLHttpRequest" }
+            });
+            const data = await resp.json();
+            if (!resp.ok || !data.ok) throw new Error(data?.error || "Baslatma hatasi");
+
+            activeIslemId = data.islemId;
+            setRunStatus("Calisiyor");
+            setStepStatus(steps[0], "active");
+            stopPolling();
+            pollTimer = setTimeout(poll, 500);
+        } catch (err) {
+            setRunStatus("Hata");
+            showMessage(err.message, true);
+            unlock();
+        }
+    });
+})();
+</script>
+}

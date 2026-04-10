@@ -1,0 +1,51 @@
+-- İrsaliye tablolarının şemalarını görmek için sorgular
+
+-- İrsaliye başlık tablosu
+SELECT 
+    COLUMN_NAME,
+    DATA_TYPE,
+    CHARACTER_MAXIMUM_LENGTH,
+    IS_NULLABLE,
+    COLUMN_DEFAULT
+FROM INFORMATION_SCHEMA.COLUMNS 
+WHERE TABLE_NAME = 'irs' 
+ORDER BY ORDINAL_POSITION;
+
+-- İrsaliye satır tablosu
+SELECT 
+    COLUMN_NAME,
+    DATA_TYPE,
+    CHARACTER_MAXIMUM_LENGTH,
+    IS_NULLABLE,
+    COLUMN_DEFAULT
+FROM INFORMATION_SCHEMA.COLUMNS 
+WHERE TABLE_NAME = 'irsayr' 
+ORDER BY ORDINAL_POSITION;
+
+-- İrsaliye hareket tablosu
+SELECT 
+    COLUMN_NAME,
+    DATA_TYPE,
+    CHARACTER_MAXIMUM_LENGTH,
+    IS_NULLABLE,
+    COLUMN_DEFAULT
+FROM INFORMATION_SCHEMA.COLUMNS 
+WHERE TABLE_NAME = 'irshrk' 
+ORDER BY ORDINAL_POSITION;
+
+-- İrsaliye tip tablosu
+SELECT 
+    COLUMN_NAME,
+    DATA_TYPE,
+    CHARACTER_MAXIMUM_LENGTH,
+    IS_NULLABLE,
+    COLUMN_DEFAULT
+FROM INFORMATION_SCHEMA.COLUMNS 
+WHERE TABLE_NAME = 'irstip' 
+ORDER BY ORDINAL_POSITION;
+
+-- İrsaliye tip kodları ve açıklamaları
+SELECT * FROM irstip ORDER BY tipID;
+
+-- Fatura tip kodları (karşılaştırma için)
+SELECT * FROM fatTip_vw ORDER BY tipID;

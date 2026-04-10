@@ -1,0 +1,165 @@
+@page
+@model App.Features.Rapor.EvrakDetayModel
+@{
+    ViewData["Title"] = $"Evrak {Model.Baslik?.EvrakId} - BKM Maliyet";
+    var b = Model.Baslik!;
+    var toplamMiktar = Model.Kalemler.Sum(k => k.Miktar);
+    var toplamTutar = Model.Kalemler.Sum(k => k.Tutar);
+    var toplamFifoMaliyet = Model.Kalemler.Where(k => k.FifoMaliyet.HasValue).Sum(k => k.FifoMaliyet!.Value);
+    var toplamBrutKar = Model.Kalemler.Where(k => k.BrutKar.HasValue).Sum(k => k.BrutKar!.Value);
+    var fifoVarMi = Model.Kalemler.Any(k => k.FifoMaliyet.HasValue);
+    var toplamMarj = toplamTutar != 0 ? (toplamBrutKar / Math.Abs(toplamTutar)) * 100 : 0m;
+}
+
+<nav class="text-xs text-[color:var(--muted)] mb-4">
+    <a href="/" class="hover:underline">Dashboard</a> /
+    <a href="/Rapor/UrunDetay?StkId=@b.StkId" class="hover:underline">Urun @b.StkId</a> /
+    Evrak @b.EvrakId
+</nav>
+
+<!-- Üst bilgi kartı -->
+<div class="bg-[color:var(--card)] border border-[color:var(--line)] rounded-xl p-6 mb-6">
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+            <h1 class="text-xl font-bold text-[color:var(--ink)] mb-1">Evrak #@b.EvrakId</h1>
+            <p class="text-sm text-[color:var(--muted)]">
+                Hareket: <span class="font-medium text-[color:var(--ink)]">@b.HrkId</span>
+            </p>
+        </div>
+        <span class="px-3 py-1 rounded-full text-xs font-semibold
+            @(Model.HareketTipiAdi switch {
+                "ALIŞ" => "bg-blue-100 text-blue-700",
+                "SATIŞ" => "bg-orange-100 text-orange-700",
+                "TRANSFER" => "bg-purple-100 text-purple-700",
+                "SAYIM" or "ENVANTER" => "bg-gray-100 text-gray-700",
+                "İADE" => "bg-yellow-100 text-yellow-700",
+                _ => "bg-gray-100 text-gray-600"
+            })">@Model.HareketTipiAdi</span>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5">
+        <div>
+            <div class="text-[10px] uppercase tracking-wider text-[color:var(--muted)] mb-1">Tarih</div>
+            <div class="text-sm font-semibold text-[color:var(--ink)]">@b.Tarih.ToString("dd.MM.yyyy")</div>
+        </div>
+        <div>
+            <div class="text-[10px] uppercase tracking-wider text-[color:var(--muted)] mb-1">Mekan</div>
+            <div class="text-sm font-semibold text-[color:var(--ink)]">@Model.MekanAdi</div>
+        </div>
+        <div>
+            <div class="text-[10px] uppercase tracking-wider text-[color:var(--muted)] mb-1">Urun</div>
+            <div class="text-sm font-semibold text-[color:var(--ink)]">
+                <a href="/Rapor/UrunDetay?StkId=@b.StkId" class="hover:underline text-[color:var(--accent)]">@b.UrunAd</a>
+            </div>
+            <div class="text-[10px] text-[color:var(--muted)]">@b.UrunKod @(string.IsNullOrEmpty(b.MarkaAd) ? "" : "· " + b.MarkaAd)</div>
+        </div>
+        <div>
+            <div class="text-[10px] uppercase tracking-wider text-[color:var(--muted)] mb-1">Miktar / Tutar</div>
+            <div class="text-sm font-semibold @(b.Miktar >= 0 ? "text-green-600" : "text-red-600")">
+                @b.Miktar.ToString("N2") AD
+            </div>
+            <div class="text-xs text-[color:var(--muted)]">@b.Tutar.ToString("N2") TL</div>
+        </div>
+    </div>
+</div>
+
+@if (fifoVarMi)
+{
+    <!-- Maliyet özet kartları -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-[color:var(--card)] border border-[color:var(--line)] rounded-xl p-4">
+            <div class="text-[10px] uppercase tracking-wider text-[color:var(--muted)] mb-1">Satis Tutari</div>
+            <div class="text-lg font-bold text-[color:var(--ink)] tabular-nums">@toplamTutar.ToString("N2") <span class="text-xs font-normal">TL</span></div>
+        </div>
+        <div class="bg-[color:var(--card)] border border-[color:var(--line)] rounded-xl p-4">
+            <div class="text-[10px] uppercase tracking-wider text-[color:var(--muted)] mb-1">FIFO Maliyet</div>
+            <div class="text-lg font-bold text-[color:var(--ink)] tabular-nums">@toplamFifoMaliyet.ToString("N2") <span class="text-xs font-normal">TL</span></div>
+        </div>
+        <div class="bg-[color:var(--card)] border border-[color:var(--line)] rounded-xl p-4">
+            <div class="text-[10px] uppercase tracking-wider text-[color:var(--muted)] mb-1">Brut Kar</div>
+            <div class="text-lg font-bold tabular-nums @(toplamBrutKar >= 0 ? "text-green-600" : "text-red-600")">@toplamBrutKar.ToString("N2") <span class="text-xs font-normal">TL</span></div>
+        </div>
+        <div class="bg-[color:var(--card)] border border-[color:var(--line)] rounded-xl p-4">
+            <div class="text-[10px] uppercase tracking-wider text-[color:var(--muted)] mb-1">Kar Marji</div>
+            <div class="text-lg font-bold tabular-nums @(toplamMarj >= 0 ? "text-green-600" : "text-red-600")">%@toplamMarj.ToString("N1")</div>
+        </div>
+    </div>
+}
+
+<!-- Evrak kalemleri -->
+<div class="bg-[color:var(--card)] border border-[color:var(--line)] rounded-xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-[color:var(--line)] flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-[color:var(--ink)]">
+            Evrak Kalemleri
+            <span class="ml-2 text-xs font-normal text-[color:var(--muted)]">(@Model.Kalemler.Count kalem)</span>
+        </h2>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-[color:var(--bg)] text-[10px] uppercase tracking-wider text-[color:var(--muted)]">
+                <tr>
+                    <th class="px-4 py-3 text-left">StkId</th>
+                    <th class="px-4 py-3 text-left">Urun Adi</th>
+                    <th class="px-4 py-3 text-left">Marka</th>
+                    <th class="px-4 py-3 text-right">Miktar</th>
+                    <th class="px-4 py-3 text-right">Tutar</th>
+                    <th class="px-4 py-3 text-right">Birim Fiyat</th>
+                    @if (fifoVarMi)
+                    {
+                        <th class="px-4 py-3 text-right">FIFO Maliyet</th>
+                        <th class="px-4 py-3 text-right">FIFO Birim</th>
+                        <th class="px-4 py-3 text-right">Brut Kar</th>
+                        <th class="px-4 py-3 text-right">Marj</th>
+                    }
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[color:var(--line)]">
+                @foreach (var k in Model.Kalemler)
+                {
+                    var isActive = k.HrkId == b.HrkId;
+                    <tr class="@(isActive ? "bg-[color:var(--accent)]/5 font-semibold" : "hover:bg-[color:var(--bg)]") transition-colors cursor-pointer"
+                        data-href="/Rapor/UrunDetay?StkId=@k.StkId">
+                        <td class="px-4 py-3 tabular-nums text-[color:var(--accent)]">@k.StkId</td>
+                        <td class="px-4 py-3 max-w-[200px] truncate">@k.UrunAd</td>
+                        <td class="px-4 py-3 text-[color:var(--muted)] text-xs">@k.MarkaAd</td>
+                        <td class="px-4 py-3 text-right tabular-nums @(k.Miktar >= 0 ? "text-green-600" : "text-red-600")">
+                            @k.Miktar.ToString("N2")
+                        </td>
+                        <td class="px-4 py-3 text-right tabular-nums">@k.Tutar.ToString("N2")</td>
+                        <td class="px-4 py-3 text-right tabular-nums text-xs">@k.BirimFiyat.ToString("N4")</td>
+                        @if (fifoVarMi)
+                        {
+                            <td class="px-4 py-3 text-right tabular-nums">
+                                @(k.FifoMaliyet.HasValue ? k.FifoMaliyet.Value.ToString("N2") : "<span class='text-[color:var(--muted)]'>-</span>")
+                            </td>
+                            <td class="px-4 py-3 text-right tabular-nums text-xs">
+                                @(k.FifoBirimMaliyet.HasValue ? k.FifoBirimMaliyet.Value.ToString("N4") : "-")
+                            </td>
+                            <td class="px-4 py-3 text-right tabular-nums @(k.BrutKar.HasValue ? (k.BrutKar.Value >= 0 ? "text-green-600" : "text-red-600") : "")">
+                                @(k.BrutKar.HasValue ? k.BrutKar.Value.ToString("N2") : "-")
+                            </td>
+                            <td class="px-4 py-3 text-right tabular-nums text-xs @(k.BrutKarMarji.HasValue ? (k.BrutKarMarji.Value >= 0 ? "text-green-600" : "text-red-600") : "")">
+                                @(k.BrutKarMarji.HasValue ? $"%{k.BrutKarMarji.Value:N1}" : "-")
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+            <tfoot class="bg-[color:var(--bg)] font-semibold text-xs">
+                <tr>
+                    <td class="px-4 py-3" colspan="3">TOPLAM</td>
+                    <td class="px-4 py-3 text-right tabular-nums">@toplamMiktar.ToString("N2")</td>
+                    <td class="px-4 py-3 text-right tabular-nums">@toplamTutar.ToString("N2")</td>
+                    <td class="px-4 py-3"></td>
+                    @if (fifoVarMi)
+                    {
+                        <td class="px-4 py-3 text-right tabular-nums">@toplamFifoMaliyet.ToString("N2")</td>
+                        <td class="px-4 py-3"></td>
+                        <td class="px-4 py-3 text-right tabular-nums @(toplamBrutKar >= 0 ? "text-green-600" : "text-red-600")">@toplamBrutKar.ToString("N2")</td>
+                        <td class="px-4 py-3 text-right tabular-nums @(toplamMarj >= 0 ? "text-green-600" : "text-red-600")">%@toplamMarj.ToString("N1")</td>
+                    }
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>

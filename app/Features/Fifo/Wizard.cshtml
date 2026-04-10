@@ -1,0 +1,685 @@
+@page
+@model App.Features.Fifo.WizardModel
+@{
+    ViewData["Title"] = "Acilis Kurulum Sihirbazi";
+}
+
+<section class="rounded-2xl border border-gray-200 bg-white p-8 shadow-lg">
+    <div class="text-xs font-medium uppercase tracking-widest text-blue-600">FIFO Kurulum</div>
+    <h1 class="mt-3 text-3xl font-semibold leading-tight text-gray-900">Acilis Kurulum Sihirbazi</h1>
+    <p class="mt-3 text-sm leading-6 text-gray-500">
+        Snapshot, acilis maliyetlendirme ve ilk hesaplamayi sirayla calistirin.
+    </p>
+</section>
+
+<!-- Stepper Bar -->
+<section class="mt-6">
+    <div class="flex items-center justify-center gap-0" id="wizard-stepper">
+        @for (var i = 1; i <= 3; i++)
+        {
+            var label = i switch { 1 => "Snapshot", 2 => "Acilis", _ => "Hesaplama" };
+            <div class="flex items-center">
+                <div class="flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition"
+                     data-stepper-item="@i"
+                     data-stepper-status="@(i == 1 ? "active" : "locked")">
+                    <span class="grid h-6 w-6 place-items-center rounded-full text-xs font-bold" data-stepper-num>@i</span>
+                    <span>@label</span>
+                    <svg class="hidden h-4 w-4" data-stepper-check fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                </div>
+                @if (i < 3)
+                {
+                    <div class="mx-2 h-px w-8 bg-gray-300" data-stepper-line="@i"></div>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+<!-- Adim 1: Snapshot -->
+<section class="mt-6 rounded-2xl border border-gray-200 bg-white shadow-lg transition" id="step-1" data-wizard-step="1">
+    <button type="button" class="flex w-full items-center justify-between p-6 text-left" data-step-toggle="1">
+        <div>
+            <div class="text-xs font-medium uppercase tracking-widest text-blue-600">Adim 1</div>
+            <div class="mt-1 text-lg font-semibold text-gray-900">Envanter Snapshot</div>
+            <div class="mt-1 text-xs text-gray-400">ERP'den stok miktarlarini cek, FifoAcilisEnvanter'e yaz.</div>
+        </div>
+        <svg class="h-5 w-5 text-gray-400 transition" data-step-chevron="1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+    </button>
+    <div class="border-t border-gray-200 p-6" data-step-body="1">
+        <form data-wizard-form="snapshot">
+            <label class="block text-sm text-gray-600">
+                <span class="font-medium">Envanter tarihi</span>
+                <input type="date" name="EnvanterTarihi" value="@Model.EnvanterTarihi.ToString("yyyy-MM-dd")"
+                       class="mt-2 block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+            </label>
+            <div class="mt-4 flex items-center gap-3">
+                <button type="submit"
+                        class="inline-flex items-center justify-center rounded-full bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:-translate-y-0.5 hover:bg-blue-700 active:translate-y-0"
+                        data-wizard-submit="snapshot">
+                    Snapshot Olustur
+                </button>
+                <button type="button"
+                        class="hidden inline-flex items-center justify-center rounded-full bg-red-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+                        data-wizard-cancel="snapshot">
+                    Iptal Et
+                </button>
+                <span class="rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-medium text-gray-500" data-wizard-status="snapshot">Hazir</span>
+            </div>
+            <!-- Timeline -->
+            <ol class="relative mt-4 space-y-3 border-l-2 border-gray-200 pl-6" data-wizard-timeline="snapshot">
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="snapshot_temizle" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold text-gray-900">Eski snapshot temizle</div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                </li>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="snapshot_mekan_1" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold text-gray-900">Mekan Merkez (1)</div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                </li>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="snapshot_mekan_12" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold text-gray-900">Mekan Sube-12 (12)</div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                </li>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="snapshot_mekan_4477" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold text-gray-900">Mekan Sube-4477 (4477)</div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                </li>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="snapshot_mekan_4478" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold text-gray-900">Mekan Sube-4478 (4478)</div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                </li>
+            </ol>
+            <div class="mt-3 hidden rounded-xl border px-4 py-3 text-sm" data-wizard-message="snapshot"></div>
+        </form>
+    </div>
+</section>
+
+<!-- Adim 2: Acilis Maliyetlendirme -->
+<section class="mt-4 rounded-2xl border border-gray-200 bg-white shadow-lg opacity-60 transition" id="step-2" data-wizard-step="2">
+    <button type="button" class="flex w-full items-center justify-between p-6 text-left" data-step-toggle="2" disabled>
+        <div>
+            <div class="text-xs font-medium uppercase tracking-widest text-amber-600">Adim 2</div>
+            <div class="mt-1 text-lg font-semibold text-gray-900">Acilis Maliyetlendirme</div>
+            <div class="mt-1 text-xs text-gray-400">bkm.sp_fifo_StokMaliyetAcilis_V2 ile ters fatura aging katmanlari olustur.</div>
+            <div class="mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                <svg class="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+                <span><strong>Bu islem yaklasik 2-3 dakika surer.</strong> Tum urunler icin ters fatura eslestirmesi yapilir. Islem arka planda calisiyor, sayfayi kapatabilirsin — Islem Log'dan takip edebilirsin.</span>
+            </div>
+        </div>
+        <svg class="h-5 w-5 text-gray-400 transition -rotate-90" data-step-chevron="2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+    </button>
+    <div class="hidden border-t border-gray-200 p-6" data-step-body="2">
+        <form data-wizard-form="acilis">
+            <input type="hidden" name="EnvanterTarihi" data-sync-envanter />
+            <div class="flex items-center gap-3">
+                <button type="submit"
+                        class="inline-flex items-center justify-center rounded-full bg-amber-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-amber-600/25 transition hover:-translate-y-0.5 hover:bg-amber-700 active:translate-y-0"
+                        data-wizard-submit="acilis" disabled>
+                    Acilis Baslat
+                </button>
+                <button type="button"
+                        class="hidden inline-flex items-center justify-center rounded-full bg-red-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+                        data-wizard-cancel="acilis">
+                    Iptal Et
+                </button>
+                <span class="rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-medium text-gray-500" data-wizard-status="acilis">Bekliyor</span>
+            </div>
+            <!-- V2 SP adim timeline — polling ile guncellenir -->
+            <ol class="relative mt-4 space-y-3 border-l-2 border-gray-200 pl-6" data-wizard-timeline="acilis">
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="envanter_v2" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <div class="text-sm font-semibold text-gray-900">Envanter snapshot</div>
+                            <div class="text-xs text-gray-400 mt-0.5">ERP stok hareketlerinden (irsHrk) mekan bazli envanter cekilir (~8sn)</div>
+                        </div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                </li>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="alis_v2" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <div class="text-sm font-semibold text-gray-900">Alislar toplanir</div>
+                            <div class="text-xs text-gray-400 mt-0.5">Fatura verileri (fat+fatAyr) taranir, 1M+ alis kaydi toplanir (~30sn)</div>
+                        </div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                </li>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="katman_v2" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <div class="text-sm font-semibold text-gray-900">Ters FIFO katman</div>
+                            <div class="text-xs text-gray-400 mt-0.5">En son alistan geriye dogru katmanlar olusturulur (aging) (~3sn)</div>
+                        </div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                </li>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="tamamla_v2" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <div class="text-sm font-semibold text-gray-900">Eksik tamamlama</div>
+                            <div class="text-xs text-gray-400 mt-0.5">Son alis, merkez depo ve sart fiyat ile eksikler tamamlanir (~45sn)</div>
+                        </div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                </li>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="aylik_devir_v2" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <div class="text-sm font-semibold text-gray-900">Aylik devir</div>
+                            <div class="text-xs text-gray-400 mt-0.5">Kalan eksikler icin aylik stok devir analizi + fiyat eslestirme (~50sn)</div>
+                        </div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                </li>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="sorun_v2" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <div class="text-sm font-semibold text-gray-900">Sorun kaydi</div>
+                            <div class="text-xs text-gray-400 mt-0.5">Fiyat bulunamayan, eksik kalan urunler raporlanir (~8sn)</div>
+                        </div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                </li>
+            </ol>
+            <div class="mt-3 hidden rounded-xl border px-4 py-3 text-sm" data-wizard-message="acilis"></div>
+        </form>
+    </div>
+</section>
+
+<!-- Adim 3: Ilk Hesaplama -->
+<section class="mt-4 rounded-2xl border border-gray-200 bg-white shadow-lg opacity-60 transition" id="step-3" data-wizard-step="3">
+    <button type="button" class="flex w-full items-center justify-between p-6 text-left" data-step-toggle="3" disabled>
+        <div>
+            <div class="text-xs font-medium uppercase tracking-widest text-emerald-600">Adim 3</div>
+            <div class="mt-1 text-lg font-semibold text-gray-900">Ilk Hesaplama</div>
+            <div class="mt-1 text-xs text-gray-400">sp_Fifo_AylikRutinFull ile ilk ay hesaplamasi.</div>
+            <div class="mt-2 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                <svg class="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+                <span><strong>Bu islem 3-10 dakika surebilir.</strong> Devir + alis katman + FIFO cikis hesaplanir. Sayfayi kapatsan bile islem devam eder.</span>
+            </div>
+        </div>
+        <svg class="h-5 w-5 text-gray-400 transition -rotate-90" data-step-chevron="3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+    </button>
+    <div class="hidden border-t border-gray-200 p-6" data-step-body="3">
+        <form data-wizard-form="hesapla">
+            <div class="grid gap-4 lg:grid-cols-2">
+                <label class="block text-sm text-gray-600">
+                    <span class="font-medium">Yil</span>
+                    <input type="number" name="Yil" value="@Model.Yil" min="2020" max="2099"
+                           class="mt-2 block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+                </label>
+                <label class="block text-sm text-gray-600">
+                    <span class="font-medium">Ay</span>
+                    <input type="number" name="Ay" value="@Model.Ay" min="1" max="12"
+                           class="mt-2 block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+                </label>
+            </div>
+            <div class="mt-4 flex items-center gap-3">
+                <button type="submit"
+                        class="inline-flex items-center justify-center rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition hover:-translate-y-0.5 hover:bg-emerald-700 active:translate-y-0"
+                        data-wizard-submit="hesapla" disabled>
+                    Hesapla
+                </button>
+                <button type="button"
+                        class="hidden inline-flex items-center justify-center rounded-full bg-red-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+                        data-wizard-cancel="hesapla">
+                    Iptal Et
+                </button>
+                <span class="rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-medium text-gray-500" data-wizard-status="hesapla">Bekliyor</span>
+            </div>
+            <ol class="relative mt-4 space-y-3 border-l-2 border-gray-200 pl-6" data-wizard-timeline="hesapla">
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="rutin_alis" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <div class="text-sm font-semibold text-gray-900">Alis katman olustur</div>
+                            <div class="text-xs text-gray-400 mt-0.5">Fatura verilerinden (fat+fatAyr) alis katmanlari olusturulur</div>
+                        </div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                </li>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="rutin_cikis" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <div class="text-sm font-semibold text-gray-900">FIFO cikis hesapla</div>
+                            <div class="text-xs text-gray-400 mt-0.5">Satis/sarf hareketleri FIFO siralamasiyla katmanlardan dusulur</div>
+                        </div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                </li>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="rutin_rapor" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <div class="text-sm font-semibold text-gray-900">Sonuc hazirligi</div>
+                            <div class="text-xs text-gray-400 mt-0.5">Sentetik katman kontrolu, sorunlu stok tespiti ve rapor olusturma</div>
+                        </div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                </li>
+            </ol>
+            <div class="mt-3 hidden rounded-xl border px-4 py-3 text-sm" data-wizard-message="hesapla"></div>
+        </form>
+    </div>
+</section>
+
+@section Scripts
+{
+<script>
+(() => {
+    const stepLabels = { idle: "Bekliyor", active: "Calisiyor", done: "Tamam", skipped: "Atlandi", error: "Hata" };
+    const runLabels  = { READY: "Hazir", CALISIYOR: "Calisiyor", TAMAMLANDI: "Tamamlandi", HATA: "Hata", IPTAL: "Iptal Edildi" };
+    const statusColors = {
+        idle:    { border: "border-gray-200",  dot: "bg-gray-300",   badge: "text-gray-400 border-gray-200" },
+        active:  { border: "border-blue-300",  dot: "bg-blue-500",   badge: "text-blue-600 border-blue-200 bg-blue-50" },
+        done:    { border: "border-green-300", dot: "bg-green-500",  badge: "text-green-600 border-green-200 bg-green-50" },
+        skipped: { border: "border-gray-300",  dot: "bg-gray-400",   badge: "text-gray-500 border-gray-200 bg-gray-50" },
+        error:   { border: "border-red-300",   dot: "bg-red-500",    badge: "text-red-600 border-red-200 bg-red-50" }
+    };
+
+    const stepperColors = {
+        locked:  { ring: "border-gray-200 bg-white text-gray-400", num: "bg-gray-100 text-gray-400" },
+        active:  { ring: "border-blue-300 bg-blue-50 text-blue-700", num: "bg-blue-600 text-white" },
+        done:    { ring: "border-green-300 bg-green-50 text-green-700", num: "bg-green-600 text-white" }
+    };
+
+    // State
+    const completed = { 1: false, 2: false, 3: false };
+    const pollTimers = {};
+    const activeIslemIds = {};
+    const handlerMap = {
+        snapshot: { post: "Snapshot", durum: "SnapshotDurum" },
+        acilis:   { post: "Acilis",   durum: "AcilisDurum" },
+        hesapla:  { post: "Hesapla",  durum: "HesaplaDurum" }
+    };
+    const stepKeys = { 1: "snapshot", 2: "acilis", 3: "hesapla" };
+
+    function buildUrl(handler, params) {
+        const url = new URL(window.location.pathname, window.location.origin);
+        url.searchParams.set("handler", handler);
+        if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+        return url.toString();
+    }
+
+    function mapDurum(d) {
+        if (!d) return "idle";
+        switch (d.toUpperCase()) {
+            case "CALISIYOR": return "active";
+            case "TAMAMLANDI": return "done";
+            case "ATLANDI": return "skipped";
+            case "HATA": return "error";
+            default: return "idle";
+        }
+    }
+
+    function setTimelineStepStatus(el, status) {
+        const prev = el.dataset.status || "idle";
+        el.dataset.status = status;
+        const prevC = statusColors[prev] || statusColors.idle;
+        const newC  = statusColors[status] || statusColors.idle;
+        el.classList.remove(prevC.border); el.classList.add(newC.border);
+        const dotInner = el.querySelector("[data-dot-inner]");
+        if (dotInner) { dotInner.classList.remove(prevC.dot); dotInner.classList.add(newC.dot); }
+        const badge = el.querySelector("[data-step-state]");
+        if (badge) {
+            badge.className = "rounded-full border px-2 py-0.5 text-[10px] font-medium " + newC.badge;
+            badge.textContent = stepLabels[status] || stepLabels.idle;
+        }
+    }
+
+    function showMessage(key, text, isError) {
+        const box = document.querySelector(`[data-wizard-message="${key}"]`);
+        if (!box) return;
+        box.classList.remove("hidden", "border-red-200", "bg-red-50", "text-red-600",
+                             "border-green-200", "bg-green-50", "text-green-700");
+        if (isError) box.classList.add("border-red-200", "bg-red-50", "text-red-600");
+        else box.classList.add("border-green-200", "bg-green-50", "text-green-700");
+        box.textContent = text;
+    }
+
+    function setStatusPill(key, text) {
+        const pill = document.querySelector(`[data-wizard-status="${key}"]`);
+        if (pill) pill.textContent = text;
+    }
+
+    function lockBtn(key) {
+        const btn = document.querySelector(`[data-wizard-submit="${key}"]`);
+        if (btn) { btn.disabled = true; btn.classList.add("opacity-60", "cursor-wait"); }
+    }
+
+    function unlockBtn(key) {
+        const btn = document.querySelector(`[data-wizard-submit="${key}"]`);
+        if (btn) { btn.disabled = false; btn.classList.remove("opacity-60", "cursor-wait"); }
+        hideCancelBtn(key);
+    }
+
+    function showCancelBtn(key) {
+        const btn = document.querySelector(`[data-wizard-cancel="${key}"]`);
+        if (btn) btn.classList.remove("hidden");
+    }
+
+    function hideCancelBtn(key) {
+        const btn = document.querySelector(`[data-wizard-cancel="${key}"]`);
+        if (btn) btn.classList.add("hidden");
+    }
+
+    async function cancelIslem(key) {
+        const islemId = activeIslemIds[key];
+        if (!islemId) return;
+        try {
+            await fetch(buildUrl("Iptal", { islemId }), { method: "POST" });
+            setStatusPill(key, "Iptal ediliyor...");
+            hideCancelBtn(key);
+        } catch { /* polling zaten IPTAL durumunu yakalayacak */ }
+    }
+
+    function formatSure(ms) {
+        const sn = Math.round(ms / 1000);
+        if (sn < 60) return `${sn}sn`;
+        return `${Math.floor(sn/60)}dk ${sn%60}sn`;
+    }
+
+    function applyTimelineSteps(key, adimlar) {
+        const timeline = document.querySelector(`[data-wizard-timeline="${key}"]`);
+        if (!timeline) { console.warn("TIMELINE YOK:", key); return; }
+
+        const byKey = new Map(adimlar.map(a => [a.adimKodu, a]));
+        const steps = timeline.querySelectorAll("[data-step]");
+        console.log("TIMELINE", key, "steps:", steps.length, "byKey:", [...byKey.keys()], "stepKeys:", [...steps].map(s => s.dataset.stepKey));
+        steps.forEach(el => {
+            const match = byKey.get(el.dataset.stepKey);
+            if (!match) { console.log("NO MATCH:", el.dataset.stepKey); return; }
+            setTimelineStepStatus(el, mapDurum(match.durum));
+
+            const badge = el.querySelector("[data-step-state]");
+            if (!badge) return;
+
+            if (match.durum === "TAMAMLANDI" && match.baslangic && match.bitis) {
+                // Tamamlanan: toplam süreyi göster
+                badge.textContent = "✓ " + formatSure(new Date(match.bitis) - new Date(match.baslangic));
+            } else if (match.durum === "CALISIYOR" && match.baslangic) {
+                // Çalışan: canlı sayaç
+                const gecen = Date.now() - new Date(match.baslangic).getTime();
+                badge.textContent = "⏱ " + formatSure(gecen);
+            }
+
+            // Mesaj göster (varsa)
+            let info = el.querySelector("[data-step-info]");
+            if (match.mesaj) {
+                if (!info) {
+                    info = document.createElement("div");
+                    info.setAttribute("data-step-info", "");
+                    info.className = "text-xs text-gray-500 mt-1";
+                    el.querySelector(".flex")?.after(info);
+                }
+                info.textContent = match.mesaj;
+            }
+        });
+    }
+
+    // Stepper UI
+    function updateStepper(stepNum, status) {
+        const item = document.querySelector(`[data-stepper-item="${stepNum}"]`);
+        if (!item) return;
+        const num = item.querySelector("[data-stepper-num]");
+        const check = item.querySelector("[data-stepper-check]");
+
+        // Remove old classes
+        Object.values(stepperColors).forEach(c => {
+            item.classList.remove(...c.ring.split(" "));
+            if (num) num.classList.remove(...c.num.split(" "));
+        });
+
+        const c = stepperColors[status] || stepperColors.locked;
+        item.classList.add(...c.ring.split(" "));
+        if (num) num.classList.add(...c.num.split(" "));
+
+        if (status === "done" && check && num) {
+            num.classList.add("hidden");
+            check.classList.remove("hidden");
+        } else if (check && num) {
+            num.classList.remove("hidden");
+            check.classList.add("hidden");
+        }
+    }
+
+    // Accordion open/close
+    function openStep(stepNum) {
+        const section = document.querySelector(`[data-wizard-step="${stepNum}"]`);
+        if (!section) return;
+        section.classList.remove("opacity-60");
+        const body = section.querySelector(`[data-step-body="${stepNum}"]`);
+        if (body) body.classList.remove("hidden");
+        const chevron = section.querySelector(`[data-step-chevron="${stepNum}"]`);
+        if (chevron) chevron.classList.remove("-rotate-90");
+        const toggle = section.querySelector(`[data-step-toggle="${stepNum}"]`);
+        if (toggle) toggle.disabled = false;
+    }
+
+    function closeStep(stepNum) {
+        const body = document.querySelector(`[data-step-body="${stepNum}"]`);
+        if (body) body.classList.add("hidden");
+        const chevron = document.querySelector(`[data-step-chevron="${stepNum}"]`);
+        if (chevron) chevron.classList.add("-rotate-90");
+    }
+
+    function activateWizardStep(stepNum) {
+        updateStepper(stepNum, "active");
+        openStep(stepNum);
+        const key = stepKeys[stepNum];
+        const btn = document.querySelector(`[data-wizard-submit="${key}"]`);
+        if (btn) btn.disabled = false;
+    }
+
+    function completeWizardStep(stepNum) {
+        completed[stepNum] = true;
+        updateStepper(stepNum, "done");
+        closeStep(stepNum);
+        // Activate next
+        const next = stepNum + 1;
+        if (next <= 3) {
+            activateWizardStep(next);
+            // Sync envanter tarihi to hidden input
+            if (next === 2) {
+                const src = document.querySelector('[data-wizard-form="snapshot"] [name="EnvanterTarihi"]');
+                const dst = document.querySelector('[data-sync-envanter]');
+                if (src && dst) dst.value = src.value;
+            }
+        }
+    }
+
+    // Polling
+    function stopPolling(key) {
+        if (pollTimers[key]) { clearTimeout(pollTimers[key]); delete pollTimers[key]; }
+    }
+
+    async function poll(key, stepNum) {
+        const islemId = activeIslemIds[key];
+        if (!islemId) return;
+        try {
+            const resp = await fetch(buildUrl(handlerMap[key].durum, { islemId }), {
+                headers: { "Accept": "application/json" }
+            });
+            if (!resp.ok) {
+                // Islem henuz DB'ye yazilmamis olabilir, 3 sn sonra tekrar dene
+                pollTimers[key] = setTimeout(() => poll(key, stepNum), 3000);
+                return;
+            }
+            let data;
+            try { data = await resp.json(); } catch {
+                pollTimers[key] = setTimeout(() => poll(key, stepNum), 3000);
+                return;
+            }
+            if (!data.ok) {
+                pollTimers[key] = setTimeout(() => poll(key, stepNum), 3000);
+                return;
+            }
+
+            // Gecen sure goster
+            const durumText = runLabels[data.durum] || data.durum;
+            if (data.durum === "CALISIYOR" && data.baslangic) {
+                const gecenSn = Math.floor((Date.now() - new Date(data.baslangic).getTime()) / 1000);
+                const dk = Math.floor(gecenSn / 60);
+                const sn = gecenSn % 60;
+                setStatusPill(key, `${durumText} (${dk}dk ${sn}s)`);
+            } else {
+                setStatusPill(key, durumText);
+            }
+            if (Array.isArray(data.adimlar)) {
+                console.log("POLL", key, "adimlar:", data.adimlar.length, data.adimlar.map(a => a.adimKodu + "=" + a.durum));
+                applyTimelineSteps(key, data.adimlar);
+            } else {
+                console.log("POLL", key, "adimlar YOK", data);
+            }
+
+            if (data.durum === "TAMAMLANDI") {
+                stopPolling(key);
+                delete activeIslemIds[key];
+                unlockBtn(key);
+                showMessage(key, data.aciklama || "Islem tamamlandi.", false);
+                completeWizardStep(stepNum);
+                return;
+            }
+            if (data.durum === "HATA") {
+                stopPolling(key);
+                delete activeIslemIds[key];
+                unlockBtn(key);
+                showMessage(key, data.aciklama || "Islem sirasinda hata olustu.", true);
+                return;
+            }
+            if (data.durum === "IPTAL") {
+                stopPolling(key);
+                delete activeIslemIds[key];
+                unlockBtn(key);
+                showMessage(key, "Islem iptal edildi.", true);
+                return;
+            }
+            pollTimers[key] = setTimeout(() => poll(key, stepNum), 1000);
+        } catch (err) {
+            // NetworkError → server restart olmus olabilir, 5 sn sonra tekrar dene
+            setStatusPill(key, "Baglanti bekleniyor...");
+            pollTimers[key] = setTimeout(() => poll(key, stepNum), 5000);
+        }
+    }
+
+    // Form submit handler
+    function bindForm(key, stepNum) {
+        const form = document.querySelector(`[data-wizard-form="${key}"]`);
+        if (!form) return;
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const btn = document.querySelector(`[data-wizard-submit="${key}"]`);
+            if (btn?.disabled) return;
+
+            lockBtn(key);
+            showCancelBtn(key);
+            setStatusPill(key, "Baslatiliyor...");
+
+            try {
+                const resp = await fetch(buildUrl(handlerMap[key].post), {
+                    method: "POST",
+                    body: new FormData(form),
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                });
+                const data = await resp.json();
+                if (!resp.ok || !data.ok) throw new Error(data?.error || "Baslatma hatasi");
+
+                activeIslemIds[key] = data.islemId;
+                setStatusPill(key, "Calisiyor");
+                stopPolling(key);
+                pollTimers[key] = setTimeout(() => poll(key, stepNum), 2000);
+            } catch (err) {
+                setStatusPill(key, "Hata");
+                showMessage(key, err.message, true);
+                unlockBtn(key);
+            }
+        });
+    }
+
+    // Toggle accordion (only for completed/active steps)
+    document.querySelectorAll("[data-step-toggle]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            if (btn.disabled) return;
+            const num = btn.dataset.stepToggle;
+            const body = document.querySelector(`[data-step-body="${num}"]`);
+            const chevron = document.querySelector(`[data-step-chevron="${num}"]`);
+            if (!body) return;
+            const isHidden = body.classList.contains("hidden");
+            if (isHidden) { body.classList.remove("hidden"); chevron?.classList.remove("-rotate-90"); }
+            else { body.classList.add("hidden"); chevron?.classList.add("-rotate-90"); }
+        });
+    });
+
+    // Cancel butonlari
+    document.querySelectorAll("[data-wizard-cancel]").forEach(btn => {
+        btn.addEventListener("click", () => cancelIslem(btn.dataset.wizardCancel));
+    });
+
+    // Init
+    updateStepper(1, "active");
+    updateStepper(2, "locked");
+    updateStepper(3, "locked");
+
+    bindForm("snapshot", 1);
+    bindForm("acilis", 2);
+    bindForm("hesapla", 3);
+})();
+</script>
+}

@@ -1,0 +1,94 @@
+@{
+    var currentPage = ViewContext.RouteData.Values["page"]?.ToString() ?? string.Empty;
+    var linkBase = "flex items-center justify-between rounded-2xl border px-4 py-3 text-sm transition";
+    var linkActive = $"{linkBase} border-[color:var(--accent)] bg-[color:var(--accent)]/10 text-[color:var(--ink)]";
+    var linkIdle = $"{linkBase} border-transparent text-[color:var(--muted)] hover:border-[color:var(--line)] hover:text-[color:var(--ink)]";
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - FIFO</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="min-h-screen font-['Space_Grotesk'] text-[color:var(--ink)]">
+    <div class="bg-mesh"></div>
+
+    <div class="relative min-h-screen">
+        <div class="flex min-h-screen">
+            <aside class="hidden lg:flex w-72 flex-col border-r border-[color:var(--line)] bg-white/70 px-6 py-8 backdrop-blur">
+                <div class="flex items-center gap-3">
+                    <div class="grid h-11 w-11 place-items-center rounded-2xl bg-[color:var(--ink)] text-xs font-semibold tracking-[0.3em] text-white">
+                        FIFO
+                    </div>
+                    <div>
+                        <div class="text-sm font-semibold">Ops Panel</div>
+                        <div class="text-xs text-[color:var(--muted)]">2026 maliyet akisi</div>
+                    </div>
+                </div>
+
+                <div class="mt-10 text-[11px] uppercase tracking-[0.3em] text-[color:var(--muted)]">Genel</div>
+                <nav class="mt-3 space-y-2">
+                    <a class="@(currentPage == "/Home/Index" ? linkActive : linkIdle)" asp-page="/Home/Index">
+                        <span>Ana Sayfa</span>
+                    </a>
+                    <a class="@(currentPage == "/Issues/Index" ? linkActive : linkIdle)" asp-page="/Issues/Index">
+                        <span>Sorunlar</span>
+                    </a>
+                </nav>
+
+                <div class="mt-8 text-[11px] uppercase tracking-[0.3em] text-[color:var(--muted)]">Islemler</div>
+                <nav class="mt-3 space-y-2">
+                    <a class="@(currentPage == "/Run/Acilis" ? linkActive : linkIdle)" asp-page="/Run/Acilis">
+                        <span>Devir (Acilis)</span>
+                    </a>
+                    <a class="@(currentPage == "/Run/Index" ? linkActive : linkIdle)" asp-page="/Run/Index">
+                        <span>Donem FIFO</span>
+                    </a>
+                </nav>
+
+                <div class="mt-auto rounded-3xl border border-[color:var(--line)] bg-white/80 p-4 text-xs text-[color:var(--muted)]">
+                    <div class="font-medium text-[color:var(--ink)]">Run mode</div>
+                    <div>Devir ve donem adimlari ayrildi.</div>
+                </div>
+            </aside>
+
+            <div class="flex-1">
+                <header class="sticky top-0 z-10 border-b border-[color:var(--line)] bg-[color:var(--bg)]/80 backdrop-blur">
+                    <div class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
+                        <div>
+                            <div class="text-xs uppercase tracking-[0.3em] text-[color:var(--accent)]">FIFO Ops</div>
+                            <div class="text-lg font-semibold">Stok maliyet calistirma merkezi</div>
+                        </div>
+                        <nav class="flex flex-wrap items-center gap-3 text-xs text-[color:var(--muted)] lg:hidden">
+                            <a asp-page="/Home/Index" class="@(currentPage == "/Home/Index" ? "font-semibold text-[color:var(--ink)]" : "hover:text-[color:var(--ink)]")">Ana</a>
+                            <a asp-page="/Run/Acilis" class="@(currentPage == "/Run/Acilis" ? "font-semibold text-[color:var(--ink)]" : "hover:text-[color:var(--ink)]")">Devir</a>
+                            <a asp-page="/Run/Index" class="@(currentPage == "/Run/Index" ? "font-semibold text-[color:var(--ink)]" : "hover:text-[color:var(--ink)]")">Donem</a>
+                            <a asp-page="/Issues/Index" class="@(currentPage == "/Issues/Index" ? "font-semibold text-[color:var(--ink)]" : "hover:text-[color:var(--ink)]")">Sorunlar</a>
+                        </nav>
+                        <div class="hidden lg:flex items-center gap-2 text-xs text-[color:var(--muted)]">
+                            <span class="rounded-full border border-[color:var(--line)] px-3 py-1">SQL Server</span>
+                            <span class="rounded-full border border-[color:var(--line)] px-3 py-1">Razor Pages</span>
+                        </div>
+                    </div>
+                </header>
+
+                <main class="mx-auto w-full max-w-6xl space-y-8 px-6 py-10">
+                    @RenderBody()
+                </main>
+
+                <footer class="border-t border-[color:var(--line)] py-6 text-center text-xs text-[color:var(--muted)]">
+                    FIFO ops paneli - SQL Server
+                </footer>
+            </div>
+        </div>
+    </div>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,223 @@
+@page
+@model App.Features.Islem.HataliRetryModel
+@{
+    ViewData["Title"] = "Hatali Retry";
+}
+
+<section class="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-8 shadow-lg">
+    <div class="absolute inset-0 bg-gradient-to-br from-red-50 via-transparent to-transparent"></div>
+    <div class="relative">
+        <div class="text-xs font-medium uppercase tracking-widest text-red-600">Hata Yonetimi</div>
+        <h1 class="mt-3 text-3xl font-semibold leading-tight text-gray-900">Hatali Urun Retry</h1>
+        <p class="mt-4 text-sm leading-6 text-gray-500">
+            Batch islemlerinde hata alan urunleri listeler. Secilen urunler tek tek yeniden calistirilir.
+        </p>
+    </div>
+</section>
+
+<section class="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
+    @if (Model.Hatalar.Count == 0)
+    {
+        <div class="flex flex-col items-center justify-center py-12 text-center">
+            <svg class="h-12 w-12 text-green-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+            <div class="mt-3 text-sm font-medium text-gray-900">Hatali urun yok</div>
+            <div class="mt-1 text-xs text-gray-400">Tum batch islemleri basariyla tamamlanmis.</div>
+        </div>
+    }
+    else
+    {
+        <form method="post" data-retry-form>
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div class="flex items-center gap-3">
+                    <label class="flex items-center gap-2 text-sm text-gray-700">
+                        <input type="checkbox" data-select-all
+                               class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500/30" />
+                        <span class="font-medium">Tumunu sec</span>
+                    </label>
+                    <span class="text-xs text-gray-400" data-selected-count>0 secili</span>
+                </div>
+                <button type="submit"
+                        class="inline-flex items-center justify-center rounded-full bg-red-600 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-red-600/25 transition hover:-translate-y-0.5 hover:bg-red-700 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                        data-retry-submit disabled>
+                    Secilenleri Tekrar Calistir
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-200 text-left text-xs uppercase tracking-wider text-gray-400">
+                            <th class="pb-3 pr-3 w-10"></th>
+                            <th class="pb-3 pr-3">StkId</th>
+                            <th class="pb-3 pr-3">Donem</th>
+                            <th class="pb-3 pr-3">Batch</th>
+                            <th class="pb-3 pr-3">Hata Mesaji</th>
+                            <th class="pb-3">Zaman</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @foreach (var h in Model.Hatalar)
+                        {
+                            <tr class="hover:bg-gray-50/50 transition">
+                                <td class="py-3 pr-3">
+                                    <input type="checkbox" name="SecilenStkIds" value="@h.StkId" data-item-check
+                                           class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500/30" />
+                                </td>
+                                <td class="py-3 pr-3">
+                                    <a asp-page="/Rapor/Karsilastirma" asp-route-StkId="@h.StkId"
+                                       class="font-mono text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline">
+                                        @h.StkId
+                                    </a>
+                                </td>
+                                <td class="py-3 pr-3 text-gray-600">@h.DonemYil-@h.DonemAy.ToString("D2")</td>
+                                <td class="py-3 pr-3 text-gray-500">#@h.BatchNo</td>
+                                <td class="py-3 pr-3">
+                                    <span class="inline-block max-w-xs truncate text-red-600" title="@h.HataMesaji">
+                                        @(h.HataMesaji.Length > 80 ? h.HataMesaji[..80] + "..." : h.HataMesaji)
+                                    </span>
+                                </td>
+                                <td class="py-3 text-xs text-gray-400">@h.HataZamani.ToString("dd.MM.yyyy HH:mm")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Retry progress -->
+            <div class="hidden mt-4 rounded-xl border border-gray-200 bg-gray-50/50 p-4" data-retry-progress>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-gray-700">Retry Durumu</span>
+                    <span class="rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-medium text-gray-500" data-retry-status>Calisiyor</span>
+                </div>
+                <div class="mt-2 text-xs text-gray-500" data-retry-message></div>
+            </div>
+
+            <div class="hidden mt-4 rounded-xl border px-4 py-3 text-sm" data-retry-result></div>
+        </form>
+    }
+</section>
+
+@section Scripts
+{
+<script>
+(() => {
+    const form = document.querySelector("[data-retry-form]");
+    if (!form) return;
+
+    const selectAll     = form.querySelector("[data-select-all]");
+    const itemChecks    = Array.from(form.querySelectorAll("[data-item-check]"));
+    const selectedCount = form.querySelector("[data-selected-count]");
+    const submitBtn     = form.querySelector("[data-retry-submit]");
+    const progressBox   = form.querySelector("[data-retry-progress]");
+    const statusEl      = form.querySelector("[data-retry-status]");
+    const messageEl     = form.querySelector("[data-retry-message]");
+    const resultBox     = form.querySelector("[data-retry-result]");
+
+    function updateCount() {
+        const checked = itemChecks.filter(c => c.checked).length;
+        selectedCount.textContent = checked + " secili";
+        submitBtn.disabled = checked === 0;
+    }
+
+    selectAll.addEventListener("change", () => {
+        itemChecks.forEach(c => c.checked = selectAll.checked);
+        updateCount();
+    });
+    itemChecks.forEach(c => c.addEventListener("change", () => {
+        selectAll.checked = itemChecks.every(c => c.checked);
+        updateCount();
+    }));
+
+    function showResult(text, isError) {
+        resultBox.classList.remove("hidden", "border-red-200", "bg-red-50", "text-red-600",
+                                   "border-green-200", "bg-green-50", "text-green-700");
+        resultBox.classList.add(isError ? "border-red-200" : "border-green-200",
+                                isError ? "bg-red-50" : "bg-green-50",
+                                isError ? "text-red-600" : "text-green-700");
+        resultBox.textContent = text;
+    }
+
+    function buildUrl(handler, params) {
+        const url = new URL(window.location.pathname, window.location.origin);
+        url.searchParams.set("handler", handler);
+        if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+        return url.toString();
+    }
+
+    let pollTimer = null;
+    let activeIslemId = null;
+
+    function stopPolling() { if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; } }
+
+    async function poll() {
+        if (!activeIslemId) return;
+        try {
+            const resp = await fetch(buildUrl("Durum", { islemId: activeIslemId }),
+                { headers: { "Accept": "application/json" } });
+            if (!resp.ok) throw new Error("Durum okunamadi");
+            const data = await resp.json();
+            if (!data.ok) throw new Error(data.error || "Durum okunamadi");
+
+            const durumLabel = { CALISIYOR: "Calisiyor", TAMAMLANDI: "Tamamlandi", HATA: "Hata", KISMEN_HATA: "Kismen Hata" };
+            statusEl.textContent = durumLabel[data.durum] || data.durum;
+
+            if (data.adimlar && data.adimlar.length > 0) {
+                const last = data.adimlar[data.adimlar.length - 1];
+                if (last.mesaj) messageEl.textContent = last.mesaj;
+            }
+
+            if (data.durum === "TAMAMLANDI" || data.durum === "KISMEN_HATA") {
+                stopPolling(); activeIslemId = null;
+                submitBtn.disabled = false; submitBtn.classList.remove("opacity-60", "cursor-wait");
+                showResult(data.aciklama || "Retry tamamlandi.", data.durum === "KISMEN_HATA");
+                return;
+            }
+            if (data.durum === "HATA") {
+                stopPolling(); activeIslemId = null;
+                submitBtn.disabled = false; submitBtn.classList.remove("opacity-60", "cursor-wait");
+                showResult(data.aciklama || "Retry hatasi.", true);
+                return;
+            }
+            pollTimer = setTimeout(poll, 2000);
+        } catch (err) {
+            stopPolling(); activeIslemId = null;
+            submitBtn.disabled = false; submitBtn.classList.remove("opacity-60", "cursor-wait");
+            showResult("Durum sorgusu basarisiz: " + err.message, true);
+        }
+    }
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (submitBtn.disabled) return;
+
+        submitBtn.disabled = true;
+        submitBtn.classList.add("opacity-60", "cursor-wait");
+        resultBox.classList.add("hidden");
+        progressBox.classList.remove("hidden");
+        statusEl.textContent = "Baslatiliyor...";
+        messageEl.textContent = "";
+
+        try {
+            const resp = await fetch(buildUrl("Retry"), {
+                method: "POST",
+                body: new FormData(form),
+                headers: { "X-Requested-With": "XMLHttpRequest" }
+            });
+            const data = await resp.json();
+            if (!resp.ok || !data.ok) throw new Error(data?.error || "Retry baslatma hatasi");
+
+            activeIslemId = data.islemId;
+            statusEl.textContent = "Calisiyor";
+            messageEl.textContent = data.toplam + " urun isleniyor...";
+            stopPolling();
+            pollTimer = setTimeout(poll, 2000);
+        } catch (err) {
+            statusEl.textContent = "Hata";
+            messageEl.textContent = err.message;
+            submitBtn.disabled = false;
+            submitBtn.classList.remove("opacity-60", "cursor-wait");
+        }
+    });
+})();
+</script>
+}

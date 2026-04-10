@@ -1,0 +1,132 @@
+@page
+@model App.Features.Home.IndexModel
+@{
+    ViewData["Title"] = "Ana Sayfa";
+}
+
+<section class="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+    <div class="relative overflow-hidden rounded-[32px] border border-[color:var(--line)] bg-white/80 p-8 shadow-[0_24px_60px_rgba(27,23,18,0.12)] backdrop-blur">
+        <div class="absolute inset-0 bg-gradient-to-br from-[color:var(--accent)]/15 via-transparent to-transparent"></div>
+        <div class="relative">
+            <div class="text-xs uppercase tracking-[0.4em] text-[color:var(--accent)]">FIFO Ops</div>
+            <h1 class="mt-3 text-3xl font-semibold leading-tight md:text-4xl">
+                Stok maliyet akisina tek ekrandan komuta et.
+            </h1>
+            <p class="mt-4 text-sm leading-6 text-[color:var(--muted)]">
+                Acilis devir katmani, donem alis katmanlari ve FIFO cikislari ayni panelden
+                izlenir. Tek urun guncelleme desteklidir.
+            </p>
+            <div class="mt-6 flex flex-wrap gap-3">
+                <a class="inline-flex items-center justify-center rounded-full bg-[color:var(--accent)] px-5 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(31,111,92,0.28)] transition hover:-translate-y-0.5" asp-page="/Run/Acilis">
+                    Devir (Acilis)
+                </a>
+                <a class="inline-flex items-center justify-center rounded-full border border-[color:var(--line)] bg-white/80 px-5 py-2 text-sm font-semibold text-[color:var(--ink)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]" asp-page="/Run/Index">
+                    Donem FIFO
+                </a>
+                <a class="inline-flex items-center justify-center rounded-full border border-[color:var(--line)] bg-white/80 px-5 py-2 text-sm font-semibold text-[color:var(--ink)] transition hover:border-[color:var(--accent-2)] hover:text-[color:var(--accent-2)]" asp-page="/Issues/Index">
+                    Sorunlar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="rounded-[32px] border border-[color:var(--line)] bg-white/80 p-6 shadow-[0_20px_50px_rgba(27,23,18,0.1)] backdrop-blur">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <div class="text-xs uppercase tracking-[0.3em] text-[color:var(--muted)]">Son 30 gun</div>
+                <div class="text-lg font-semibold">Operasyon ozeti</div>
+            </div>
+            <div class="rounded-full border border-[color:var(--line)] bg-white/80 px-3 py-1 text-[11px] text-[color:var(--muted)]">
+                bkm.fifo_StokMaliyetCikis
+            </div>
+        </div>
+
+        <div class="mt-5 grid gap-4 sm:grid-cols-3">
+            <div class="rounded-2xl border border-[color:var(--line)] bg-white/90 p-4">
+                <div class="text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">Cikis satiri</div>
+                <div class="mt-2 text-2xl font-semibold">@Model.Summary.LineCount</div>
+            </div>
+            <div class="rounded-2xl border border-[color:var(--line)] bg-white/90 p-4">
+                <div class="text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">Urun sayisi</div>
+                <div class="mt-2 text-2xl font-semibold">@Model.Summary.ProductCount</div>
+            </div>
+            <div class="rounded-2xl border border-[color:var(--line)] bg-white/90 p-4">
+                <div class="text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">Toplam maliyet</div>
+                <div class="mt-2 text-2xl font-semibold">@Model.Summary.TotalCost.ToString("N2")</div>
+            </div>
+        </div>
+
+        <div class="mt-6">
+            <div class="text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">Sorun tipleri</div>
+            <div class="mt-3 flex flex-wrap gap-2">
+                @if (Model.IssueSummary.Count == 0)
+                {
+                    <span class="rounded-full border border-[color:var(--line)] bg-white/80 px-3 py-1 text-xs font-semibold text-[color:var(--accent)]">Sorun yok</span>
+                }
+                else
+                {
+                    foreach (var item in Model.IssueSummary)
+                    {
+                        <span class="rounded-full border border-[color:var(--line)] bg-white/80 px-3 py-1 text-xs font-semibold text-[color:var(--accent)]">@item.SorunTip (@item.Adet)</span>
+                    }
+                }
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+        {
+            <div class="mt-5 rounded-2xl border border-[color:var(--accent-2)]/40 bg-[color:var(--accent-2)]/10 px-4 py-3 text-sm text-[color:var(--accent-2)]">
+                @Model.ErrorMessage
+            </div>
+        }
+    </div>
+</section>
+
+<section class="grid gap-6 lg:grid-cols-2">
+    <div class="rounded-3xl border border-[color:var(--line)] bg-white/80 p-6 shadow-[0_20px_50px_rgba(27,23,18,0.08)] backdrop-blur">
+        <div class="text-xs uppercase tracking-[0.3em] text-[color:var(--muted)]">Akis ozeti</div>
+        <div class="mt-2 text-lg font-semibold">Ustten alta kontrol listesi</div>
+        <div class="mt-5 space-y-4 text-sm text-[color:var(--muted)]">
+            <div class="flex items-start gap-3">
+                <span class="mt-1 h-2 w-2 rounded-full bg-[color:var(--accent)]"></span>
+                <div>
+                    <div class="font-semibold text-[color:var(--ink)]">Devir katmani</div>
+                    <div>2025 kapanisi icin ters fatura aging ile havuz olusturulur.</div>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <span class="mt-1 h-2 w-2 rounded-full bg-[color:var(--accent-2)]"></span>
+                <div>
+                    <div class="font-semibold text-[color:var(--ink)]">Alis katmanlari</div>
+                    <div>Donem ici alislar bkm.fifo_StokMaliyetHavuzu tablosuna eklenir.</div>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <span class="mt-1 h-2 w-2 rounded-full bg-[color:var(--accent-3)]"></span>
+                <div>
+                    <div class="font-semibold text-[color:var(--ink)]">FIFO cikis</div>
+                    <div>Satislar FIFO katmanlariyla eslestirilir ve raporlanir.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="rounded-3xl border border-[color:var(--line)] bg-white/80 p-6 shadow-[0_20px_50px_rgba(27,23,18,0.08)] backdrop-blur">
+        <div class="text-xs uppercase tracking-[0.3em] text-[color:var(--muted)]">Kaynaklar</div>
+        <div class="mt-2 text-lg font-semibold">SQL objeleri ve ciktilar</div>
+        <div class="mt-5 grid gap-3 text-sm text-[color:var(--muted)]">
+            <div class="flex items-center justify-between rounded-2xl border border-[color:var(--line)] bg-white/90 px-4 py-3">
+                <span>bkm.sp_fifo_StokMaliyetCalistir</span>
+                <span class="text-xs uppercase tracking-[0.2em] text-[color:var(--accent)]">master</span>
+            </div>
+            <div class="flex items-center justify-between rounded-2xl border border-[color:var(--line)] bg-white/90 px-4 py-3">
+                <span>bkm.fifo_StokMaliyetHavuzu</span>
+                <span class="text-xs uppercase tracking-[0.2em] text-[color:var(--accent-2)]">havuz</span>
+            </div>
+            <div class="flex items-center justify-between rounded-2xl border border-[color:var(--line)] bg-white/90 px-4 py-3">
+                <span>bkm.fifo_StokMaliyetCikis</span>
+                <span class="text-xs uppercase tracking-[0.2em] text-[color:var(--accent-3)]">rapor</span>
+            </div>
+        </div>
+    </div>
+</section>

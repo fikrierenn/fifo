@@ -1,0 +1,193 @@
+@page
+@model App.Features.Snapshot.CreateModel
+@{
+    ViewData["Title"] = "Envanter Snapshot";
+}
+
+<section class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+    <div class="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-8 shadow-lg">
+        <div class="absolute inset-0 bg-gradient-to-br from-teal-50 via-transparent to-transparent"></div>
+        <div class="relative">
+            <div class="text-xs font-medium uppercase tracking-widest text-teal-600">Snapshot</div>
+            <h1 class="mt-3 text-3xl font-semibold leading-tight text-gray-900">Envanter Snapshot</h1>
+            <p class="mt-4 text-sm leading-6 text-gray-500">
+                ERP'den (DerinSISBkm.irsHrk) belirtilen tarihteki stok miktarlarini
+                cekip FifoAcilisEnvanter tablosuna yazar. FIFO acilis oncesi gereklidir.
+            </p>
+            <div class="mt-6 flex flex-wrap gap-2 text-xs text-gray-400">
+                <span class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1">irsHrk</span>
+                <span class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1">FifoAcilisEnvanter</span>
+                <span class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1">4 Mekan</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
+        <div class="text-xs font-medium uppercase tracking-widest text-gray-400">Mevcut Snapshotlar</div>
+        @if (Model.MevcutSnapshotlar.Count == 0)
+        {
+            <p class="mt-4 text-sm text-gray-400">Henuz snapshot olusturulmamis.</p>
+        }
+        else
+        {
+            <div class="mt-4 space-y-3">
+                @foreach (var s in Model.MevcutSnapshotlar)
+                {
+                    <div class="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50/50 px-4 py-3">
+                        <div>
+                            <div class="text-sm font-semibold text-gray-900">@s.EnvanterTarihi.ToString("yyyy-MM-dd")</div>
+                            <div class="text-xs text-gray-400">@s.MekanSayisi mekan &middot; @s.UrunSayisi urun</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm font-medium tabular-nums text-gray-700">@s.ToplamMiktar.ToString("N0")</div>
+                            <div class="text-[10px] text-gray-400">toplam miktar</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+<section class="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
+    <form method="post" class="grid gap-6" data-run-form="snapshot">
+        <div class="grid gap-4 lg:grid-cols-2">
+            <label class="block text-sm text-gray-600">
+                <span class="font-medium">Envanter tarihi</span>
+                <input type="date" asp-for="EnvanterTarihi"
+                       class="mt-2 block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20" />
+            </label>
+            <label class="block text-sm text-gray-600">
+                <span class="font-medium">StkId (opsiyonel)</span>
+                <input type="number" asp-for="StkId" placeholder="Tum urunler"
+                       class="mt-2 block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20" />
+            </label>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+            <button type="submit"
+                    class="inline-flex items-center justify-center rounded-full bg-teal-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-teal-600/25 transition hover:-translate-y-0.5 hover:bg-teal-700 active:translate-y-0"
+                    data-run-submit>
+                Snapshot olustur
+            </button>
+            <span class="text-xs text-gray-400">Mevcut snapshot varsa uzerine yazar.</span>
+        </div>
+
+        <!-- Timeline -->
+        <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-4">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <div class="text-[11px] font-medium uppercase tracking-widest text-gray-400">Zaman cizelgesi</div>
+                    <div class="text-sm font-semibold text-gray-900">Snapshot akisi</div>
+                </div>
+                <span class="rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-medium text-gray-500" data-run-status>Hazir</span>
+            </div>
+
+            <ol class="relative mt-4 space-y-3 border-l-2 border-gray-200 pl-6" data-run-timeline>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="snapshot_temizle" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold text-gray-900">Eski snapshot temizle</div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-400">Ayni tarihteki eski kayitlar silinir.</div>
+                </li>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="snapshot_cek" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold text-gray-900">ERP stok snapshot cek</div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-400">irsHrk'dan kumulatif stok miktarlari cekilip FifoAcilisEnvanter'e yazilir.</div>
+                </li>
+            </ol>
+        </div>
+
+        <div class="hidden rounded-xl border px-4 py-3 text-sm" data-run-message></div>
+    </form>
+</section>
+
+@section Scripts
+{
+<script>
+(() => {
+    const form = document.querySelector("[data-run-form='snapshot']");
+    if (!form) return;
+
+    const statusPill  = form.querySelector("[data-run-status]");
+    const submitBtn   = form.querySelector("[data-run-submit]");
+    const steps       = Array.from(form.querySelectorAll("[data-step]"));
+    const msgBox      = form.querySelector("[data-run-message]");
+
+    const stepLabels = { idle: "Bekliyor", active: "Calisiyor", done: "Tamam", error: "Hata" };
+    const runLabels  = { READY: "Hazir", CALISIYOR: "Calisiyor", TAMAMLANDI: "Tamamlandi", HATA: "Hata" };
+
+    const statusColors = {
+        idle:   { border: "border-gray-200",  dot: "bg-gray-300",  badge: "text-gray-400 border-gray-200" },
+        active: { border: "border-teal-300",  dot: "bg-teal-500",  badge: "text-teal-600 border-teal-200 bg-teal-50" },
+        done:   { border: "border-green-300", dot: "bg-green-500", badge: "text-green-600 border-green-200 bg-green-50" },
+        error:  { border: "border-red-300",   dot: "bg-red-500",   badge: "text-red-600 border-red-200 bg-red-50" }
+    };
+
+    function setStepStatus(el, status) {
+        const prev = el.dataset.status || "idle";
+        el.dataset.status = status;
+        const prevC = statusColors[prev] || statusColors.idle;
+        const newC  = statusColors[status] || statusColors.idle;
+        el.classList.remove(prevC.border); el.classList.add(newC.border);
+        const di = el.querySelector("[data-dot-inner]");
+        if (di) { di.classList.remove(prevC.dot); di.classList.add(newC.dot); }
+        const b = el.querySelector("[data-step-state]");
+        if (b) { b.className = "rounded-full border px-2 py-0.5 text-[10px] font-medium " + newC.badge; b.textContent = stepLabels[status] || "Bekliyor"; }
+    }
+
+    function showMsg(text, isErr) {
+        msgBox.classList.remove("hidden","border-red-200","bg-red-50","text-red-600","border-green-200","bg-green-50","text-green-700");
+        msgBox.classList.add(isErr ? "border-red-200" : "border-green-200", isErr ? "bg-red-50" : "bg-green-50", isErr ? "text-red-600" : "text-green-700");
+        msgBox.textContent = text;
+    }
+
+    function mapD(d) { if (!d) return "idle"; switch(d.toUpperCase()){ case "CALISIYOR": return "active"; case "TAMAMLANDI": return "done"; case "HATA": return "error"; default: return "idle"; }}
+
+    let pollTimer = null, activeId = null;
+    function stopPoll() { if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; } }
+
+    async function poll() {
+        if (!activeId) return;
+        try {
+            const r = await fetch(`?handler=Durum&islemId=${activeId}`, { headers: {"Accept":"application/json"} });
+            const d = await r.json();
+            if (!d.ok) throw new Error(d.error);
+            statusPill.textContent = runLabels[d.durum] || d.durum;
+            if (d.adimlar) d.adimlar.forEach(a => { const el = steps.find(s => s.dataset.stepKey === a.adimKodu); if (el) setStepStatus(el, mapD(a.durum)); });
+            if (d.durum === "TAMAMLANDI") { stopPoll(); activeId = null; submitBtn.disabled = false; submitBtn.classList.remove("opacity-60","cursor-wait"); showMsg(d.aciklama || "Snapshot tamamlandi.", false); return; }
+            if (d.durum === "HATA") { stopPoll(); activeId = null; submitBtn.disabled = false; submitBtn.classList.remove("opacity-60","cursor-wait"); showMsg(d.aciklama || "Hata olustu.", true); return; }
+            pollTimer = setTimeout(poll, 1000);
+        } catch(e) { stopPoll(); activeId = null; showMsg("Polling hatasi: " + e.message, true); submitBtn.disabled = false; submitBtn.classList.remove("opacity-60","cursor-wait"); }
+    }
+
+    steps.forEach(el => setStepStatus(el, "idle"));
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (submitBtn.disabled) return;
+        submitBtn.disabled = true; submitBtn.classList.add("opacity-60","cursor-wait");
+        steps.forEach(el => setStepStatus(el, "idle"));
+        msgBox.classList.add("hidden");
+        statusPill.textContent = "Baslatiliyor...";
+        try {
+            const r = await fetch("?handler=Start", { method: "POST", body: new FormData(form), headers: {"X-Requested-With":"XMLHttpRequest"} });
+            const d = await r.json();
+            if (!d.ok) throw new Error(d.error);
+            activeId = d.islemId;
+            statusPill.textContent = "Calisiyor";
+            stopPoll(); pollTimer = setTimeout(poll, 500);
+        } catch(e) { statusPill.textContent = "Hata"; showMsg(e.message, true); submitBtn.disabled = false; submitBtn.classList.remove("opacity-60","cursor-wait"); }
+    });
+})();
+</script>
+}

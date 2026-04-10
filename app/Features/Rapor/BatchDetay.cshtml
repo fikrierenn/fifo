@@ -1,0 +1,236 @@
+@page
+@model App.Features.Rapor.BatchDetayModel
+@{
+    ViewData["Title"] = Model.RunId.HasValue ? $"Batch Detay — {Model.RunId}" : "Batch Detay";
+}
+
+<!-- Breadcrumb -->
+<nav class="mb-4 text-xs text-[color:var(--muted)]">
+    <a href="/" class="hover:text-[color:var(--ink)]">Dashboard</a>
+    <span class="mx-1">/</span>
+    @if (Model.RunId.HasValue)
+    {
+        <a href="/Rapor/BatchDetay" class="hover:text-[color:var(--ink)]">Batch Detay</a>
+        <span class="mx-1">/</span>
+        <span class="text-[color:var(--ink)] font-medium">@Model.RunId.Value.ToString("N").Substring(0, 8)...</span>
+    }
+    else
+    {
+        <span class="text-[color:var(--ink)] font-medium">Batch Detay</span>
+    }
+</nav>
+
+<div class="mb-8">
+    <h1 class="text-2xl font-semibold">Batch Detay</h1>
+    <p class="mt-1 text-sm text-[color:var(--muted)]">FIFO batch calisma gecmisi ve detaylari.</p>
+</div>
+
+@if (!Model.RunId.HasValue)
+{
+    <!-- Liste Modu -->
+    <div class="rounded-xl border border-[color:var(--line)] bg-white">
+        <div class="px-5 py-4 border-b border-[color:var(--line)]">
+            <h2 class="text-sm font-semibold">Son Calismalar</h2>
+            <p class="text-xs text-[color:var(--muted)] mt-0.5">@Model.Runs.Count kayit</p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-[color:var(--line)] text-left text-xs font-medium uppercase tracking-wider text-[color:var(--muted)]">
+                        <th class="px-5 py-3">Donem</th>
+                        <th class="px-5 py-3">Baslangic</th>
+                        <th class="px-5 py-3">Bitis</th>
+                        <th class="px-5 py-3 text-right">Urun</th>
+                        <th class="px-5 py-3 text-right">Batch</th>
+                        <th class="px-5 py-3 text-right">Tamamlanan</th>
+                        <th class="px-5 py-3">Durum</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[color:var(--line)]">
+                    @if (Model.Runs.Count == 0)
+                    {
+                        <tr><td colspan="7" class="px-5 py-8 text-center text-[color:var(--muted)]">Batch calisma kaydi bulunamadi.</td></tr>
+                    }
+                    @foreach (var r in Model.Runs)
+                    {
+                        var durumCss = r.Durum switch {
+                            "CALISIYOR" => "bg-blue-50 text-blue-700",
+                            "TAMAMLANDI" => "bg-green-50 text-green-700",
+                            "HATA" => "bg-red-50 text-red-700",
+                            "KISMEN_HATA" => "bg-orange-50 text-orange-700",
+                            _ => "bg-gray-50 text-gray-700"
+                        };
+                        <tr class="hover:bg-[color:var(--bg)] transition-colors cursor-pointer" data-href="/Rapor/BatchDetay?runId=@r.RunId">
+                            <td class="px-5 py-3 font-medium tabular-nums">@r.DonemYil/@r.DonemAy.ToString("D2")</td>
+                            <td class="px-5 py-3 tabular-nums">@r.RunBaslangic.ToString("dd.MM.yyyy HH:mm")</td>
+                            <td class="px-5 py-3 tabular-nums">@(r.RunBitis?.ToString("dd.MM.yyyy HH:mm") ?? "-")</td>
+                            <td class="px-5 py-3 text-right tabular-nums">@r.ToplamUrun</td>
+                            <td class="px-5 py-3 text-right tabular-nums">@r.ToplamBatch</td>
+                            <td class="px-5 py-3 text-right tabular-nums">@r.TamamlananBatch</td>
+                            <td class="px-5 py-3">
+                                <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium @durumCss">@r.Durum</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else if (Model.Run is not null)
+{
+    <!-- Detay Modu -->
+    var run = Model.Run;
+    var runDurumCss = run.Durum switch {
+        "CALISIYOR" => "bg-blue-50 text-blue-700",
+        "TAMAMLANDI" => "bg-green-50 text-green-700",
+        "HATA" => "bg-red-50 text-red-700",
+        "KISMEN_HATA" => "bg-orange-50 text-orange-700",
+        _ => "bg-gray-50 text-gray-700"
+    };
+
+    <!-- Run Bilgi Karti -->
+    <div class="rounded-xl border border-[color:var(--line)] bg-white p-5 mb-8">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-sm font-semibold">Run Bilgisi</h2>
+            <span class="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium @runDurumCss">@run.Durum</span>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+            <div>
+                <div class="text-xs text-[color:var(--muted)] mb-0.5">Donem</div>
+                <div class="font-medium tabular-nums">@run.DonemYil/@run.DonemAy.ToString("D2")</div>
+            </div>
+            <div>
+                <div class="text-xs text-[color:var(--muted)] mb-0.5">Baslangic</div>
+                <div class="font-medium tabular-nums">@run.RunBaslangic.ToString("dd.MM.yyyy HH:mm:ss")</div>
+            </div>
+            <div>
+                <div class="text-xs text-[color:var(--muted)] mb-0.5">Bitis</div>
+                <div class="font-medium tabular-nums">@(run.RunBitis?.ToString("dd.MM.yyyy HH:mm:ss") ?? "Devam ediyor...")</div>
+            </div>
+            <div>
+                <div class="text-xs text-[color:var(--muted)] mb-0.5">Batch Boyutu</div>
+                <div class="font-medium tabular-nums">@run.BatchBoyutu</div>
+            </div>
+            <div>
+                <div class="text-xs text-[color:var(--muted)] mb-0.5">Toplam Urun</div>
+                <div class="font-medium tabular-nums">@run.ToplamUrun</div>
+            </div>
+            <div>
+                <div class="text-xs text-[color:var(--muted)] mb-0.5">Toplam Batch</div>
+                <div class="font-medium tabular-nums">@run.ToplamBatch</div>
+            </div>
+            <div>
+                <div class="text-xs text-[color:var(--muted)] mb-0.5">Tamamlanan Batch</div>
+                <div class="font-medium tabular-nums">@run.TamamlananBatch / @run.ToplamBatch</div>
+            </div>
+        </div>
+        @if (!string.IsNullOrEmpty(run.HataMesaji))
+        {
+            <div class="mt-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                <span class="font-medium">Hata:</span> @run.HataMesaji
+            </div>
+        }
+    </div>
+
+    <!-- Batch Detaylari Tablosu -->
+    <div class="rounded-xl border border-[color:var(--line)] bg-white mb-8">
+        <div class="px-5 py-4 border-b border-[color:var(--line)]">
+            <h2 class="text-sm font-semibold">Batch Detaylari</h2>
+            <p class="text-xs text-[color:var(--muted)] mt-0.5">@Model.Detaylar.Count batch</p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-[color:var(--line)] text-left text-xs font-medium uppercase tracking-wider text-[color:var(--muted)]">
+                        <th class="px-5 py-3">Batch No</th>
+                        <th class="px-5 py-3 text-right">Urun Sayisi</th>
+                        <th class="px-5 py-3">Baslangic</th>
+                        <th class="px-5 py-3">Bitis</th>
+                        <th class="px-5 py-3">Durum</th>
+                        <th class="px-5 py-3">Ilerleme</th>
+                        <th class="px-5 py-3 text-right">Basarili</th>
+                        <th class="px-5 py-3 text-right">Hatali</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[color:var(--line)]">
+                    @if (Model.Detaylar.Count == 0)
+                    {
+                        <tr><td colspan="8" class="px-5 py-8 text-center text-[color:var(--muted)]">Batch detayi bulunamadi.</td></tr>
+                    }
+                    @foreach (var d in Model.Detaylar)
+                    {
+                        var bDurumCss = d.Durum switch {
+                            "CALISIYOR" => "bg-blue-50 text-blue-700",
+                            "TAMAMLANDI" => "bg-green-50 text-green-700",
+                            "HATA" => "bg-red-50 text-red-700",
+                            _ => "bg-gray-50 text-gray-700"
+                        };
+                        var pct = d.UrunSayisi > 0 ? (int)((double)d.BasariliUrun / d.UrunSayisi * 100) : 0;
+                        <tr class="hover:bg-[color:var(--bg)] transition-colors">
+                            <td class="px-5 py-3 font-medium tabular-nums">@d.BatchNo</td>
+                            <td class="px-5 py-3 text-right tabular-nums">@d.UrunSayisi</td>
+                            <td class="px-5 py-3 tabular-nums">@d.BaslangicZamani.ToString("HH:mm:ss")</td>
+                            <td class="px-5 py-3 tabular-nums">@(d.BitisZamani?.ToString("HH:mm:ss") ?? "-")</td>
+                            <td class="px-5 py-3">
+                                <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium @bDurumCss">@d.Durum</span>
+                            </td>
+                            <td class="px-5 py-3 w-32">
+                                <div class="flex items-center gap-2">
+                                    <div class="flex-1 h-1.5 rounded-full bg-gray-100">
+                                        <div class="h-1.5 rounded-full bg-[color:var(--accent)] transition-all" style="width: @(pct)%"></div>
+                                    </div>
+                                    <span class="text-xs tabular-nums text-[color:var(--muted)]">@pct%</span>
+                                </div>
+                            </td>
+                            <td class="px-5 py-3 text-right tabular-nums text-green-700">@d.BasariliUrun</td>
+                            <td class="px-5 py-3 text-right tabular-nums @(d.HataliUrun > 0 ? "text-red-700 font-medium" : "")">@d.HataliUrun</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Hatalar Tablosu -->
+    @if (Model.Hatalar.Count > 0)
+    {
+        <div class="rounded-xl border border-[color:var(--line)] bg-white">
+            <div class="px-5 py-4 border-b border-[color:var(--line)]">
+                <h2 class="text-sm font-semibold">Hatalar</h2>
+                <p class="text-xs text-[color:var(--muted)] mt-0.5">@Model.Hatalar.Count hata</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-[color:var(--line)] text-left text-xs font-medium uppercase tracking-wider text-[color:var(--muted)]">
+                            <th class="px-5 py-3">Batch</th>
+                            <th class="px-5 py-3">StkId</th>
+                            <th class="px-5 py-3">Hata Mesaji</th>
+                            <th class="px-5 py-3">Zaman</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[color:var(--line)]">
+                        @foreach (var h in Model.Hatalar)
+                        {
+                            <tr class="hover:bg-[color:var(--bg)] transition-colors">
+                                <td class="px-5 py-3 tabular-nums">@h.BatchNo</td>
+                                <td class="px-5 py-3">
+                                    <a href="/Rapor/UrunDetay?stkId=@h.StkId" class="text-[color:var(--accent)] hover:underline font-medium">@Db.UrunAdi(h.StkId)</a>
+                                </td>
+                                <td class="px-5 py-3 text-[color:var(--muted)] max-w-md truncate">@h.HataMesaji</td>
+                                <td class="px-5 py-3 tabular-nums">@h.HataZamani.ToString("HH:mm:ss")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}
+else
+{
+    <div class="rounded-xl border border-[color:var(--line)] bg-white p-8 text-center text-[color:var(--muted)]">
+        Belirtilen RunId bulunamadi.
+    </div>
+}

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "fifo-app",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "app/", "--urls", "http://localhost:5050"],
+      "port": 5050
+    }
+  ]
+}

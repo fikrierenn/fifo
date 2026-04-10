@@ -1,0 +1,170 @@
+@page
+@model App.Features.Rapor.CikisRaporuModel
+@{
+    ViewData["Title"] = "FIFO Cikis Raporu";
+}
+
+@{
+    string TipBadgeCss(string tip) => tip switch
+    {
+        "SATIS" => "bg-red-100 text-red-700",
+        "IADE" => "bg-green-100 text-green-700",
+        _ => "bg-gray-100 text-gray-600"
+    };
+}
+
+<div class="space-y-6">
+    <div>
+        <h1 class="text-2xl font-semibold">FIFO Cikis Raporu</h1>
+        <p class="mt-1 text-sm text-[color:var(--muted)]">FIFO cikis detaylarini filtreleyin ve inceleyin.</p>
+    </div>
+
+    <form method="get" class="flex flex-wrap items-end gap-3">
+        <div>
+            <label for="Baslangic" class="block text-xs font-medium text-gray-600">Baslangic</label>
+            <input type="date" name="Baslangic" id="Baslangic" value="@Model.Baslangic?.ToString("yyyy-MM-dd")"
+                   class="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+        </div>
+        <div>
+            <label for="Bitis" class="block text-xs font-medium text-gray-600">Bitis</label>
+            <input type="date" name="Bitis" id="Bitis" value="@Model.Bitis?.ToString("yyyy-MM-dd")"
+                   class="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+        </div>
+        <div>
+            <label for="StkId" class="block text-xs font-medium text-gray-600">StkId</label>
+            <input type="number" name="StkId" id="StkId" value="@Model.StkId" placeholder="Tumu"
+                   class="w-28 rounded border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+        </div>
+        <div>
+            <label for="MekanId" class="block text-xs font-medium text-gray-600">Mekan</label>
+            <select name="MekanId" id="MekanId"
+                    class="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                <option value="">Tumu</option>
+                @foreach (var m in Db.Mekanlar)
+                {
+                    <option value="@m.Key" selected="@(Model.MekanId == m.Key)">@m.Value.Ad</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label for="HareketTipi" class="block text-xs font-medium text-gray-600">Hareket Tipi</label>
+            <select name="HareketTipi" id="HareketTipi"
+                    class="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                <option value="">Tumu</option>
+                <option value="SATIS" selected="@(Model.HareketTipi == "SATIS")">SATIS</option>
+                <option value="IADE" selected="@(Model.HareketTipi == "IADE")">IADE</option>
+            </select>
+        </div>
+        <button type="submit"
+                class="rounded bg-blue-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
+            Filtrele
+        </button>
+    </form>
+
+    <div class="grid grid-cols-2 gap-4 md:grid-cols-5">
+        <div class="rounded-lg border border-gray-200 bg-white p-4">
+            <p class="text-xs text-gray-500">Toplam Satir</p>
+            <p class="text-xl font-semibold">@Model.Ozet.ToplamSatir.ToString("N0")</p>
+        </div>
+        <div class="rounded-lg border border-gray-200 bg-white p-4">
+            <p class="text-xs text-gray-500">Urun Sayisi</p>
+            <p class="text-xl font-semibold">@Model.Ozet.UrunSayisi.ToString("N0")</p>
+        </div>
+        <div class="rounded-lg border border-gray-200 bg-white p-4">
+            <p class="text-xs text-gray-500">Satis Tutari</p>
+            <p class="text-xl font-semibold text-red-600">@Model.Ozet.SatisTutar.ToString("N2")</p>
+        </div>
+        <div class="rounded-lg border border-gray-200 bg-white p-4">
+            <p class="text-xs text-gray-500">Iade Tutari</p>
+            <p class="text-xl font-semibold text-green-600">@Model.Ozet.IadeTutar.ToString("N2")</p>
+        </div>
+        <div class="rounded-lg border border-gray-200 bg-white p-4">
+            <p class="text-xs text-gray-500">Net Tutar</p>
+            <p class="text-xl font-semibold">@((Model.Ozet.SatisTutar - Model.Ozet.IadeTutar).ToString("N2"))</p>
+        </div>
+    </div>
+
+    @if (Model.Satirlar.Count == 0)
+    {
+        <div class="rounded-md border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+            Secilen filtreler icin veri bulunamadi.
+        </div>
+    }
+    else
+    {
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-gray-700">Cikis Detaylari — <span id="shown-count">@Model.Satirlar.Count</span> / @Model.Ozet.ToplamSatir satir</span>
+            <a href="?handler=Export&Baslangic=@Model.Baslangic?.ToString("yyyy-MM-dd")&Bitis=@Model.Bitis?.ToString("yyyy-MM-dd")&StkId=@Model.StkId&MekanId=@Model.MekanId&HareketTipi=@Model.HareketTipi" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50 transition">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                CSV
+            </a>
+        </div>
+        <div class="overflow-x-auto rounded-lg border border-gray-200">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-3 py-2 text-left font-medium text-gray-600">CikisId</th>
+                        <th class="px-3 py-2 text-left font-medium text-gray-600">Urun</th>
+                        <th class="px-3 py-2 text-left font-medium text-gray-600">Tarih</th>
+                        <th class="px-3 py-2 text-center font-medium text-gray-600">Tip</th>
+                        <th class="px-3 py-2 text-left font-medium text-gray-600">Mekan</th>
+                        <th class="px-3 py-2 text-left font-medium text-gray-600">BelgeNo</th>
+                        <th class="px-3 py-2 text-right font-medium text-gray-600">KatmanId</th>
+                        <th class="px-3 py-2 text-right font-medium text-gray-600">Miktar</th>
+                        <th class="px-3 py-2 text-right font-medium text-gray-600">Birim Maliyet</th>
+                        <th class="px-3 py-2 text-right font-medium text-gray-600">Tutar</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body" class="divide-y divide-gray-100">
+                    @foreach (var s in Model.Satirlar)
+                    {
+                        <tr class="hover:bg-gray-50 cursor-pointer @(Db.DevreDisiMi(s.StkId) ? "devre-disi" : "")" data-href="/Rapor/UrunDetay?stkId=@s.StkId" data-stkid="@s.StkId">
+                            <td class="px-3 py-2 font-mono text-xs">@s.CikisId</td>
+                            <td class="px-3 py-2"><a href="/Rapor/UrunDetay?stkId=@s.StkId" class="text-blue-600 hover:underline dark:text-blue-400">@Db.UrunAdi(s.StkId)</a></td>
+                            <td class="px-3 py-2 font-mono text-xs">@s.HareketTarihi.ToString("yyyy-MM-dd")</td>
+                            <td class="px-3 py-2 text-center">
+                                <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium @TipBadgeCss(s.HareketTipi)">@s.HareketTipi</span>
+                            </td>
+                            <td class="px-3 py-2">@Db.MekanAdi(s.MekanId)</td>
+                            <td class="px-3 py-2 text-xs">@(s.BelgeNo ?? "-")</td>
+                            <td class="px-3 py-2 text-right font-mono text-xs">@(s.KatmanId?.ToString() ?? "-")</td>
+                            <td class="px-3 py-2 text-right font-mono">@s.Miktar.ToString("N4")</td>
+                            <td class="px-3 py-2 text-right font-mono">@s.BirimMaliyet.ToString("N4")</td>
+                            <td class="px-3 py-2 text-right font-mono font-medium">@s.CikisTutar.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div id="load-spinner" class="hidden py-4 text-center">
+            <svg class="inline h-6 w-6 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+            <span class="ml-2 text-sm text-gray-500">Yukleniyor...</span>
+        </div>
+        <div id="load-done" class="hidden py-3 text-center text-xs text-gray-400">Tum veriler yuklendi.</div>
+    }
+</div>
+
+@section Scripts {
+<script>
+@if (Model.Satirlar.Count > 0 && Model.HasMore)
+{
+    @:(() => {
+    @:    function tipBadge(tip) {
+    @:        const css = tip === 'SATIS' ? 'bg-red-100 text-red-700' : tip === 'IADE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600';
+    @:        return `<span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium ${css}">${tip}</span>`;
+    @:    }
+    @:    BKM.infiniteScroll({
+    @:        tbodyId: 'table-body',
+    @:        spinnerId: 'load-spinner',
+    @:        doneId: 'load-done',
+    @:        shownCountId: 'shown-count',
+    @:        initialOffset: @Model.Satirlar.Count,
+    @:        hasMore: true,
+    @:        filterParams: '@Html.Raw($"Baslangic={Model.Baslangic:yyyy-MM-dd}&Bitis={Model.Bitis:yyyy-MM-dd}" + (Model.StkId.HasValue ? $"&StkId={Model.StkId}" : "") + (Model.MekanId.HasValue ? $"&MekanId={Model.MekanId}" : "") + (!string.IsNullOrEmpty(Model.HareketTipi) ? $"&HareketTipi={Model.HareketTipi}" : ""))',
+    @:        rowClass: 'hover:bg-gray-50 cursor-pointer',
+    @:        renderRow: r => `<td class="px-3 py-2 font-mono text-xs">${r.cikisId}</td><td class="px-3 py-2"><a href="/Rapor/UrunDetay?stkId=${r.stkId}" class="text-blue-600 hover:underline dark:text-blue-400">${r.urunAdi}</a></td><td class="px-3 py-2 font-mono text-xs">${r.hareketTarihi}</td><td class="px-3 py-2 text-center">${tipBadge(r.hareketTipi)}</td><td class="px-3 py-2">${r.mekanAdi}</td><td class="px-3 py-2 text-xs">${r.belgeNo}</td><td class="px-3 py-2 text-right font-mono text-xs">${r.katmanId}</td><td class="px-3 py-2 text-right font-mono">${r.miktar}</td><td class="px-3 py-2 text-right font-mono">${r.birimMaliyet}</td><td class="px-3 py-2 text-right font-mono font-medium">${r.cikisTutar}</td>`
+    @:    });
+    @:})();
+}
+</script>
+}

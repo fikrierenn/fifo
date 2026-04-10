@@ -1,0 +1,155 @@
+@page
+@model App.Features.Rapor.KarsilastirmaModel
+@{
+    ViewData["Title"] = "FIFO vs Ortalama Karsilastirma";
+}
+
+<div class="space-y-6">
+    <div>
+        <h1 class="text-2xl font-semibold">FIFO vs Ortalama Maliyet Karsilastirma</h1>
+        <p class="mt-1 text-sm text-[color:var(--muted)]">Donem bazli birim maliyet farklarini inceleyin.</p>
+    </div>
+
+    @if (Model.MevcutDonemler.Count == 0)
+    {
+        <div class="rounded-md border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+            Henuz hesaplama yapilmadi.
+        </div>
+    }
+    else
+    {
+        <form method="get" class="flex items-center gap-3">
+            <label for="YilAy" class="text-sm font-medium">Donem</label>
+            <select name="YilAy" id="YilAy"
+                    class="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    onchange="this.form.submit()">
+                @foreach (var d in Model.MevcutDonemler)
+                {
+                    var yil = d / 100;
+                    var ay = d % 100;
+                    <option value="@d" selected="@(d == Model.YilAy)">
+                        @($"{yil}-{ay:D2}")
+                    </option>
+                }
+            </select>
+        </form>
+
+        @if (Model.Satirlar.Count == 0)
+        {
+            <div class="rounded-md border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+                Secilen donem icin veri bulunamadi.
+            </div>
+        }
+        else
+        {
+            <!-- FIFO vs Ortalama Bar Chart -->
+            <div class="rounded-xl border border-[color:var(--line)] bg-white p-5">
+                <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-3">FIFO vs Ortalama Birim Maliyet</div>
+                <div class="h-64"><canvas id="chartKarsilastirma"></canvas></div>
+            </div>
+
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-gray-700">Karsilastirma Tablosu — <span id="shown-count">@Model.Satirlar.Count</span> satir</span>
+                <a href="?handler=Export&YilAy=@Model.YilAy" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50 transition">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                    CSV
+                </a>
+            </div>
+            <div class="overflow-x-auto rounded-lg border border-gray-200">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left font-medium text-gray-600">Urun</th>
+                            <th class="px-4 py-2 text-right font-medium text-gray-600">Ort Birim Maliyet</th>
+                            <th class="px-4 py-2 text-right font-medium text-gray-600">FIFO Birim Maliyet</th>
+                            <th class="px-4 py-2 text-right font-medium text-gray-600">Fark</th>
+                            <th class="px-4 py-2 text-center font-medium text-gray-600">Fark %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-gray-100">
+                        @foreach (var s in Model.Satirlar)
+                        {
+                            <tr class="hover:bg-gray-50 @(Db.DevreDisiMi(s.StkId) ? "devre-disi" : "")" data-href="/Rapor/UrunDetay?stkId=@s.StkId" data-stkid="@s.StkId">
+                                <td class="px-4 py-2"><a href="/Rapor/UrunDetay?stkId=@s.StkId" class="text-blue-600 hover:underline dark:text-blue-400">@Db.UrunAdi(s.StkId)</a></td>
+                                <td class="px-4 py-2 text-right">@s.Ort_BirimMaliyet.ToString("N4")</td>
+                                <td class="px-4 py-2 text-right">@(s.Fifo_BirimMaliyet?.ToString("N4") ?? "-")</td>
+                                <td class="px-4 py-2 text-right">@(s.BirimMaliyetFarki?.ToString("N4") ?? "-")</td>
+                                <td class="px-4 py-2 text-center">
+                                    @if (s.FarkYuzdesi.HasValue)
+                                    {
+                                        var pct = s.FarkYuzdesi.Value;
+                                        var badgeCss = pct > 0
+                                            ? "bg-red-100 text-red-700"
+                                            : pct < 0
+                                                ? "bg-green-100 text-green-700"
+                                                : "bg-gray-100 text-gray-600";
+                                        <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium @badgeCss">
+                                            @(pct > 0 ? "+" : "")@pct.ToString("N2")%
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-gray-400">-</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div id="load-spinner" class="hidden py-4 text-center">
+                <svg class="inline h-6 w-6 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                <span class="ml-2 text-sm text-gray-500">Yukleniyor...</span>
+            </div>
+            <div id="load-done" class="hidden py-3 text-center text-xs text-gray-400">Tum veriler yuklendi.</div>
+        }
+    }
+</div>
+
+@section Scripts {
+<script>
+@if (Model.Satirlar?.Count > 0)
+{
+    // TOP 20 en buyuk fark — chart icin
+    var top20 = Model.Satirlar
+        .Where(s => s.BirimMaliyetFarki.HasValue)
+        .OrderByDescending(s => Math.Abs(s.BirimMaliyetFarki!.Value))
+        .Take(20)
+        .ToList();
+
+    @:const labels = [@Html.Raw(string.Join(",", top20.Select(s => $"'{s.StkId}'")))];
+    @:const fifoData = [@Html.Raw(string.Join(",", top20.Select(s => (s.Fifo_BirimMaliyet ?? 0).ToString("0.####", System.Globalization.CultureInfo.InvariantCulture))))];
+    @:const ortData = [@Html.Raw(string.Join(",", top20.Select(s => s.Ort_BirimMaliyet.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture))))];
+    @:BKM.bar('chartKarsilastirma', labels, [
+    @:    { label: 'FIFO', data: fifoData, backgroundColor: '#3b82f6' },
+    @:    { label: 'Ortalama', data: ortData, backgroundColor: '#10b981' }
+    @:]);
+}
+
+@if (Model.Satirlar?.Count > 0 && Model.HasMore)
+{
+    @:(() => {
+    @:    function badgeCss(pct) {
+    @:        if (pct === null) return '';
+    @:        return pct > 0 ? 'bg-red-100 text-red-700' : pct < 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600';
+    @:    }
+    @:    BKM.infiniteScroll({
+    @:        tbodyId: 'table-body',
+    @:        spinnerId: 'load-spinner',
+    @:        doneId: 'load-done',
+    @:        shownCountId: 'shown-count',
+    @:        initialOffset: @Model.Satirlar.Count,
+    @:        hasMore: true,
+    @:        filterParams: 'YilAy=@Model.YilAy',
+    @:        rowClass: 'hover:bg-gray-50',
+    @:        renderRow: r => {
+    @:            const pctHtml = r.farkYuzdesi !== null
+    @:                ? `<span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badgeCss(r.farkYuzdesi)}">${r.farkYuzdesiStr}</span>`
+    @:                : '<span class="text-gray-400">-</span>';
+    @:            return `<td class="px-4 py-2"><a href="/Rapor/UrunDetay?stkId=${r.stkId}" class="text-blue-600 hover:underline dark:text-blue-400">${r.urunAdi}</a></td><td class="px-4 py-2 text-right">${r.ortBirimMaliyet}</td><td class="px-4 py-2 text-right">${r.fifoBirimMaliyet}</td><td class="px-4 py-2 text-right">${r.birimMaliyetFarki}</td><td class="px-4 py-2 text-center">${pctHtml}</td>`;
+    @:        }
+    @:    });
+    @:})();
+}
+</script>
+}

@@ -1,0 +1,610 @@
+@page
+@model App.Features.Rapor.UrunDetayModel
+@{
+    ViewData["Title"] = Model.Urun != null ? $"{Model.Urun.Kod} - {Model.Urun.Ad}" : (Model.StkId > 0 ? $"Urun Detay — {Model.StkId}" : "Urun Detay");
+}
+
+<!-- Breadcrumb -->
+<nav class="mb-4 text-xs text-[color:var(--muted)]">
+    <a href="/" class="hover:text-[color:var(--ink)]">Dashboard</a>
+    <span class="mx-1">/</span>
+    <span class="text-[color:var(--ink)] font-medium">Urun @Model.StkId</span>
+</nav>
+
+@if (Model.StkId > 0 && Db.DevreDisiMi(Model.StkId))
+{
+    <div class="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                <span class="font-medium">Bu urun FIFO hesaplamasindan haric tutulmustur.</span>
+            </div>
+            <button onclick="toggleDevreDisiDetay(@Model.StkId)" id="dd-toggle-btn"
+                    class="rounded-md px-3 py-1 text-xs font-medium text-green-700 bg-green-100 hover:bg-green-200 transition border border-green-300">
+                Aktif Et
+            </button>
+        </div>
+    </div>
+}
+
+<!-- Baslik + Filtre -->
+<div class="mb-8 flex items-center justify-between">
+    <div>
+        @if (Model.Urun != null)
+        {
+            <h1 class="text-2xl font-semibold">@Model.Urun.Kod - @Model.Urun.Ad</h1>
+        }
+        else
+        {
+            <h1 class="text-2xl font-semibold">Urun Maliyet Detayi</h1>
+        }
+    </div>
+    @if (Model.StkId > 0 && !Db.DevreDisiMi(Model.StkId))
+    {
+        <button onclick="toggleDevreDisiDetay(@Model.StkId)" id="dd-toggle-btn"
+                class="rounded-lg px-4 py-2 text-xs font-medium text-red-600 border border-red-300 hover:bg-red-50 transition">
+            Devre Disi Birak
+        </button>
+    }
+    <p class="mt-1 text-sm text-[color:var(--muted)]">Tek urunun tum FIFO katman, cikis ve maliyet bilgisi.</p>
+</div>
+
+<!-- Urun Arama Formu (isim, barkod veya StkId ile) -->
+<form method="get" class="mb-8 flex items-end gap-3" id="urunAraForm">
+    <div class="relative" id="urunAraContainer">
+        <label class="block text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-1">Urun Ara (isim, barkod veya ID)</label>
+        <input type="text" id="urunAraInput"
+               value="@(Model.Urun != null ? $"{Model.Urun.Kod} - {Model.Urun.Ad}" : (Model.StkId > 0 ? Model.StkId.ToString() : ""))"
+               placeholder="Urun adi, barkod veya StkId girin..."
+               autocomplete="off"
+               class="rounded-lg border border-[color:var(--line)] px-3 py-2 text-sm w-96 focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]" />
+        <input type="hidden" name="StkId" id="stkIdHidden" value="@(Model.StkId > 0 ? Model.StkId : "")" />
+        <div id="urunAraResults" class="absolute z-50 hidden w-full mt-1 rounded-lg border border-[color:var(--line)] bg-white shadow-xl max-h-64 overflow-y-auto dark:bg-[color:var(--bg)]"></div>
+    </div>
+    <button type="submit"
+            class="rounded-lg bg-[color:var(--accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity">
+        Ara
+    </button>
+</form>
+
+@if (Model.StkId <= 0)
+{
+    <div class="rounded-xl border border-[color:var(--line)] bg-white dark:bg-[color:var(--bg)] p-8 text-center text-[color:var(--muted)]">
+        Stok ID girerek urun detayini goruntuleyin.
+    </div>
+    return;
+}
+
+<!-- Urun Bilgi Karti -->
+@if (Model.Urun != null)
+{
+    <div class="rounded-xl border border-[color:var(--line)] bg-white dark:bg-[color:var(--bg)] mb-8">
+        <div class="px-5 py-4 border-b border-[color:var(--line)]">
+            <h2 class="text-sm font-semibold">Urun Bilgileri</h2>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 px-5 py-4">
+            <div>
+                <div class="text-[10px] uppercase tracking-wider text-[color:var(--muted)] font-medium mb-0.5">Urun Kodu</div>
+                <div class="text-sm font-semibold text-[color:var(--ink)]">@Model.Urun.Kod</div>
+            </div>
+            <div class="lg:col-span-2">
+                <div class="text-[10px] uppercase tracking-wider text-[color:var(--muted)] font-medium mb-0.5">Urun Adi</div>
+                <div class="text-sm font-medium text-[color:var(--ink)]">@Model.Urun.Ad</div>
+            </div>
+            <div>
+                <div class="text-[10px] uppercase tracking-wider text-[color:var(--muted)] font-medium mb-0.5">Marka</div>
+                <div class="text-sm text-[color:var(--ink)]">@(string.IsNullOrWhiteSpace(Model.Urun.MarkaAd) ? "-" : Model.Urun.MarkaAd)</div>
+            </div>
+            <div>
+                <div class="text-[10px] uppercase tracking-wider text-[color:var(--muted)] font-medium mb-0.5">Kategori (KatAna)</div>
+                <div class="text-sm text-[color:var(--ink)]">@(string.IsNullOrWhiteSpace(Model.Urun.Kategori) ? "-" : Model.Urun.Kategori)</div>
+            </div>
+            <div>
+                <div class="text-[10px] uppercase tracking-wider text-[color:var(--muted)] font-medium mb-0.5">Kategori 3</div>
+                <div class="text-sm text-[color:var(--ink)]">@(string.IsNullOrWhiteSpace(Model.Urun.Kategori3) ? "-" : Model.Urun.Kategori3)</div>
+            </div>
+            <div>
+                <div class="text-[10px] uppercase tracking-wider text-[color:var(--muted)] font-medium mb-0.5">Satis / Son Alis</div>
+                <div class="text-sm text-[color:var(--ink)]">
+                    <span class="font-semibold text-[color:var(--accent)]">@Model.Urun.SatisFiyat.ToString("N2")</span>
+                    <span class="text-[color:var(--muted)] mx-1">/</span>
+                    <span>@Model.Urun.SonAlisFiyat.ToString("N2") TL</span>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Ozet Kartlari -->
+<div class="grid grid-cols-1 sm:grid-cols-4 gap-5 mb-8">
+    <div class="rounded-xl border border-[color:var(--line)] bg-white p-5">
+        <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-1">Kalan Miktar</div>
+        <div class="text-3xl font-bold text-[color:var(--ink)]">@Model.ToplamKalanMiktar.ToString("N2")</div>
+    </div>
+    <div class="rounded-xl border border-[color:var(--line)] bg-white p-5">
+        <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-1">Birim Maliyet</div>
+        <div class="text-3xl font-bold text-[color:var(--accent)]">@Model.AgirlikliOrtBirimMaliyet.ToString("N4") <span class="text-base font-normal">TL</span></div>
+    </div>
+    <div class="rounded-xl border border-[color:var(--line)] bg-white p-5">
+        <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-1">Stok Degeri</div>
+        <div class="text-3xl font-bold text-[color:var(--ink)]">@Model.ToplamStokDegeri.ToString("N2") <span class="text-base font-normal">TL</span></div>
+    </div>
+    <div class="rounded-xl border border-[color:var(--line)] bg-white p-5">
+        <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-1">Toplam SMM</div>
+        <div class="text-3xl font-bold text-[color:var(--ink)]">@Model.ToplamSmm.ToString("N2") <span class="text-base font-normal">TL</span></div>
+    </div>
+</div>
+
+<!-- Tab Navigasyonu -->
+<div class="mb-6 flex flex-wrap gap-1 rounded-xl border border-[color:var(--line)] bg-gray-50 p-1 dark:bg-gray-900" id="tabNav">
+    <button class="tab-btn active rounded-lg px-4 py-2 text-xs font-medium transition" data-tab="katmanlar">Katmanlar (@Model.Katmanlar.Count)</button>
+    <button class="tab-btn rounded-lg px-4 py-2 text-xs font-medium transition" data-tab="cikislar">Cikislar (@Model.Cikislar.Count)</button>
+    <button class="tab-btn rounded-lg px-4 py-2 text-xs font-medium transition" data-tab="hareketler">Stok Hareketleri (@Model.Hareketler.Count)</button>
+    <button class="tab-btn rounded-lg px-4 py-2 text-xs font-medium transition" data-tab="acilis">Acilis Envanter (@Model.AcilisEnvanter.Count)</button>
+    <button class="tab-btn rounded-lg px-4 py-2 text-xs font-medium transition" data-tab="ortalama">Ortalama (@Model.OrtalamaMaliyetler.Count)</button>
+    @if (Model.ManuelMaliyetler.Count > 0)
+    {
+        <button class="tab-btn rounded-lg px-4 py-2 text-xs font-medium transition" data-tab="manuel">Manuel (@Model.ManuelMaliyetler.Count)</button>
+    }
+    @if (Model.Sorunlar.Count > 0)
+    {
+        <button class="tab-btn rounded-lg px-4 py-2 text-xs font-medium transition" data-tab="sorunlar">Sorunlar (@Model.Sorunlar.Count)</button>
+    }
+</div>
+
+<!-- Katmanlar Tablosu -->
+<div class="rounded-xl border border-[color:var(--line)] bg-white mb-8" data-panel="katmanlar">
+    <div class="px-5 py-4 border-b border-[color:var(--line)] flex items-center justify-between">
+        <div>
+            <h2 class="text-sm font-semibold">FIFO Katmanlari</h2>
+            <p class="text-xs text-[color:var(--muted)] mt-0.5">@Model.Katmanlar.Count katman</p>
+        </div>
+        <a href="?handler=Export&stkId=@Model.StkId" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50 transition">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+            CSV
+        </a>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-[color:var(--line)] text-left text-xs font-medium uppercase tracking-wider text-[color:var(--muted)]">
+                    <th class="px-5 py-3">ID</th>
+                    <th class="px-5 py-3">Tarih</th>
+                    <th class="px-5 py-3">Kaynak</th>
+                    <th class="px-5 py-3">BelgeNo</th>
+                    <th class="px-5 py-3 text-right">Giris</th>
+                    <th class="px-5 py-3 text-right">Kalan</th>
+                    <th class="px-5 py-3 text-right">Birim</th>
+                    <th class="px-5 py-3">Durum</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[color:var(--line)]" data-paginate="50">
+                @if (Model.Katmanlar.Count == 0)
+                {
+                    <tr><td colspan="8" class="px-5 py-8 text-center text-[color:var(--muted)]">Katman bulunamadi.</td></tr>
+                }
+                @foreach (var k in Model.Katmanlar)
+                {
+                    <tr class="hover:bg-[color:var(--bg)] transition-colors cursor-pointer" data-href="/Rapor/KatmanDetay?katmanId=@k.KatmanId">
+                        <td class="px-5 py-3 font-medium">
+                            <a href="/Rapor/KatmanDetay?katmanId=@k.KatmanId" class="text-[color:var(--accent)] hover:underline">@k.KatmanId</a>
+                        </td>
+                        <td class="px-5 py-3 tabular-nums">@k.GirisTarihi.ToString("dd.MM.yyyy")</td>
+                        <td class="px-5 py-3">
+                            @{ var kaynakCss = k.KaynakTip switch {
+                                "ACILIS" => "bg-blue-50 text-blue-700",
+                                "FATURA" => "bg-green-50 text-green-700",
+                                "ACILIS_TAMAMLA" => "bg-orange-50 text-orange-700",
+                                "AYLIK_DEVIR" => "bg-purple-50 text-purple-700",
+                                "SENTETIK_ALIS" => "bg-red-50 text-red-700",
+                                _ => "bg-gray-50 text-gray-700"
+                            }; }
+                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium @kaynakCss" data-tip-kaynak="@k.KaynakTip">@k.KaynakTip</span>
+                        </td>
+                        <td class="px-5 py-3 text-[color:var(--muted)]">@(k.BelgeNo ?? "-")</td>
+                        <td class="px-5 py-3 text-right tabular-nums">@k.GirisMiktar.ToString("N2")</td>
+                        <td class="px-5 py-3 text-right tabular-nums font-medium">@k.KalanMiktar.ToString("N2")</td>
+                        <td class="px-5 py-3 text-right tabular-nums">@k.BirimMaliyet.ToString("N4")</td>
+                        <td class="px-5 py-3">
+                            @{ var durumCss = k.Durum switch {
+                                "NORMAL" => "bg-green-50 text-green-700",
+                                "TAMAMLAMA" or "MERKEZ_TAMAMLAMA" or "SART_TAMAMLAMA" => "bg-orange-50 text-orange-700",
+                                "FIYAT_YOK" or "HAYALI_FIYAT_YOK" or "SABIT_FIYAT_TAMAMLAMA" => "bg-red-50 text-red-700",
+                                var d when d.StartsWith("HAYALI") => "bg-yellow-50 text-yellow-700",
+                                _ => "bg-gray-50 text-gray-700"
+                            }; }
+                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium @durumCss" data-tip-durum="@k.Durum">@k.Durum</span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Cikislar Tablosu -->
+<div class="rounded-xl border border-[color:var(--line)] bg-white mb-8 hidden" data-panel="cikislar">
+    <div class="px-5 py-4 border-b border-[color:var(--line)]">
+        <h2 class="text-sm font-semibold">Cikislar (FIFO)</h2>
+        <p class="text-xs text-[color:var(--muted)] mt-0.5">@Model.Cikislar.Count cikis kaydi</p>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-[color:var(--line)] text-left text-xs font-medium uppercase tracking-wider text-[color:var(--muted)]">
+                    <th class="px-5 py-3">Tarih</th>
+                    <th class="px-5 py-3">Tip</th>
+                    <th class="px-5 py-3 text-right">Mekan</th>
+                    <th class="px-5 py-3">Katman</th>
+                    <th class="px-5 py-3 text-right">Miktar</th>
+                    <th class="px-5 py-3 text-right">Maliyet</th>
+                    <th class="px-5 py-3 text-right">Satis</th>
+                    <th class="px-5 py-3 text-right">Kar</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[color:var(--line)]" data-paginate="50">
+                @if (Model.Cikislar.Count == 0)
+                {
+                    <tr><td colspan="9" class="px-5 py-8 text-center text-[color:var(--muted)]">Cikis kaydi bulunamadi.</td></tr>
+                }
+                @foreach (var c in Model.Cikislar)
+                {
+                    <tr class="hover:bg-[color:var(--bg)] transition-colors cursor-pointer" data-href="/Rapor/KatmanDetay?katmanId=@c.KatmanId">
+                        <td class="px-5 py-3 tabular-nums">@c.HareketTarihi.ToString("dd.MM.yyyy")</td>
+                        <td class="px-5 py-3">@c.HareketTipi</td>
+                        <td class="px-5 py-3 tabular-nums">@Db.MekanAdi(c.MekanId)</td>
+                        <td class="px-5 py-3">
+                            <a href="/Rapor/KatmanDetay?katmanId=@c.KatmanId" class="text-[color:var(--accent)] hover:underline">@c.KatmanId</a>
+                        </td>
+                        <td class="px-5 py-3 text-right tabular-nums">@c.Miktar.ToString("N2")</td>
+                        <td class="px-5 py-3 text-right tabular-nums text-red-600">@c.CikisTutar.ToString("N2")</td>
+                        <td class="px-5 py-3 text-right tabular-nums text-blue-600">@(c.SatisTutar > 0 ? c.SatisTutar.ToString("N2") : "-")</td>
+                        @{ var karCss = c.BrutKar > 0 ? "text-green-600" : c.BrutKar < 0 ? "text-red-600" : "text-[color:var(--muted)]"; }
+                        <td class="px-5 py-3 text-right tabular-nums font-medium @karCss">@(c.SatisTutar > 0 ? c.BrutKar.ToString("N2") : "-")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    @if (Model.Cikislar.Count > 0)
+    {
+        var topMaliyet = Model.Cikislar.Sum(c => c.CikisTutar);
+        var topSatis = Model.Cikislar.Sum(c => c.SatisTutar);
+        var topKar = topSatis - topMaliyet;
+        var karMarj = topSatis > 0 ? topKar / topSatis * 100 : 0;
+        <div class="px-5 py-3 border-t border-[color:var(--line)] text-xs grid grid-cols-4 gap-4">
+            <div><span class="text-[color:var(--muted)]">Toplam Maliyet:</span> <span class="font-medium text-red-600">@topMaliyet.ToString("N2") TL</span></div>
+            <div><span class="text-[color:var(--muted)]">Toplam Satis:</span> <span class="font-medium text-blue-600">@topSatis.ToString("N2") TL</span></div>
+            <div><span class="text-[color:var(--muted)]">Brut Kar:</span> <span class="font-medium @(topKar >= 0 ? "text-green-600" : "text-red-600")">@topKar.ToString("N2") TL</span></div>
+            <div><span class="text-[color:var(--muted)]">Kar Marji:</span> <span class="font-medium">@karMarj.ToString("N1")%</span></div>
+        </div>
+    }
+</div>
+
+<!-- ERP Stok Hareketleri -->
+<div class="rounded-xl border border-[color:var(--line)] bg-white mb-8 hidden" data-panel="hareketler">
+    <div class="px-5 py-4 border-b border-[color:var(--line)]">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-sm font-semibold">ERP Stok Hareketleri</h2>
+                <p class="text-xs text-[color:var(--muted)] mt-0.5">DerinSIS irsHrk — alis, satis, transfer, sayim</p>
+            </div>
+            <form method="get" class="flex items-end gap-2" id="hrkFilterForm">
+                <input type="hidden" name="StkId" value="@Model.StkId" />
+                <input type="hidden" name="tab" value="hareketler" />
+                <div>
+                    <label class="block text-[10px] text-[color:var(--muted)] mb-0.5">Baslangic</label>
+                    <input type="date" name="HrkBaslangic" value="@Model.HrkBaslangic?.ToString("yyyy-MM-dd")"
+                           class="rounded border border-[color:var(--line)] px-2 py-1 text-xs" />
+                </div>
+                <div>
+                    <label class="block text-[10px] text-[color:var(--muted)] mb-0.5">Bitis</label>
+                    <input type="date" name="HrkBitis" value="@Model.HrkBitis?.ToString("yyyy-MM-dd")"
+                           class="rounded border border-[color:var(--line)] px-2 py-1 text-xs" />
+                </div>
+                <div>
+                    <label class="block text-[10px] text-[color:var(--muted)] mb-0.5">Mekan</label>
+                    <select name="HrkMekanId" class="rounded border border-[color:var(--line)] px-2 py-1 text-xs bg-white dark:bg-[color:var(--bg)]">
+                        <option value="">Tum Mekanlar</option>
+                        @foreach (var m in Db.Mekanlar)
+                        {
+                            if (Model.HrkMekanId == m.Key)
+                            {
+                                <option value="@m.Key" selected>@m.Value.Ad</option>
+                            }
+                            else
+                            {
+                                <option value="@m.Key">@m.Value.Ad</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <button type="submit" class="rounded bg-[color:var(--accent)] px-3 py-1 text-xs text-white hover:opacity-90 transition">Filtrele</button>
+            </form>
+        </div>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-[color:var(--line)] text-left text-xs font-medium uppercase tracking-wider text-[color:var(--muted)]">
+                    <th class="px-5 py-3">Tarih</th>
+                    <th class="px-5 py-3">Tip</th>
+                    <th class="px-5 py-3">Mekan</th>
+                    <th class="px-5 py-3 text-right">Miktar</th>
+                    <th class="px-5 py-3 text-right">Tutar</th>
+                    <th class="px-5 py-3 text-right">Bakiye</th>
+                    <th class="px-5 py-3">Belge No</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[color:var(--line)]" data-paginate="50">
+                @if (Model.Hareketler.Count == 0)
+                {
+                    <tr><td colspan="7" class="px-5 py-8 text-center text-[color:var(--muted)]">Bu tarih araliginda hareket bulunamadi.</td></tr>
+                }
+                else
+                {
+                    <!-- Devir Basi satiri -->
+                    <tr class="bg-blue-50 dark:bg-blue-900/20 font-semibold">
+                        <td class="px-5 py-3 tabular-nums">@Model.HrkBaslangic?.ToString("dd.MM.yyyy")</td>
+                        <td class="px-5 py-3">
+                            <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">DEVİR</span>
+                        </td>
+                        <td class="px-5 py-3 text-[color:var(--muted)]">@(Model.HrkMekanId.HasValue ? Db.MekanAdi(Model.HrkMekanId.Value) : "Tum Mekanlar")</td>
+                        <td class="px-5 py-3 text-right tabular-nums">-</td>
+                        <td class="px-5 py-3 text-right tabular-nums">-</td>
+                        <td class="px-5 py-3 text-right tabular-nums font-bold">@Model.DevirBasi.ToString("N2")</td>
+                        <td class="px-5 py-3 text-[color:var(--muted)]">Devir Basi</td>
+                    </tr>
+                    @foreach (var h in Model.Hareketler)
+                    {
+                        var tipCss = h.HareketTipi switch {
+                            "SATIS" => "bg-red-100 text-red-700",
+                            "ALIS" => "bg-green-100 text-green-700",
+                            "TRANSFER" => "bg-blue-100 text-blue-700",
+                            "SAYIM" => "bg-purple-100 text-purple-700",
+                            _ => "bg-gray-100 text-gray-600"
+                        };
+                        var miktarCss = h.Miktar >= 0 ? "text-green-600" : "text-red-600";
+                        <tr class="hover:bg-[color:var(--bg)] transition-colors cursor-pointer" data-href="/Rapor/EvrakDetay?hrkId=@h.HrkId">
+                            <td class="px-5 py-3 tabular-nums">@h.Tarih.ToString("dd.MM.yyyy")</td>
+                            <td class="px-5 py-3">
+                                <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium @tipCss">@h.HareketTipi</span>
+                            </td>
+                            <td class="px-5 py-3">@Db.MekanAdi(h.MekanId)</td>
+                            <td class="px-5 py-3 text-right tabular-nums font-medium @miktarCss">@h.Miktar.ToString("N2")</td>
+                            <td class="px-5 py-3 text-right tabular-nums @(h.Tutar != 0 ? "" : "text-[color:var(--muted)]")">@(h.Tutar != 0 ? h.Tutar.ToString("N2") : "-")</td>
+                            <td class="px-5 py-3 text-right tabular-nums font-medium">@h.Bakiye.ToString("N2")</td>
+                            <td class="px-5 py-3 text-[color:var(--muted)]">@(h.BelgeNo ?? "-")</td>
+                        </tr>
+                    }
+                    <!-- Devir Sonu satiri -->
+                    <tr class="bg-blue-50 dark:bg-blue-900/20 font-semibold border-t-2 border-blue-200">
+                        <td class="px-5 py-3 tabular-nums">@Model.HrkBitis?.ToString("dd.MM.yyyy")</td>
+                        <td class="px-5 py-3">
+                            <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">TOPLAM</span>
+                        </td>
+                        <td class="px-5 py-3"></td>
+                        <td class="px-5 py-3 text-right tabular-nums">
+                            <span class="text-green-600">+@Model.ToplamGiris.ToString("N2")</span>
+                            <span class="mx-1">/</span>
+                            <span class="text-red-600">-@Model.ToplamCikis.ToString("N2")</span>
+                        </td>
+                        <td class="px-5 py-3 text-right tabular-nums">-</td>
+                        <td class="px-5 py-3 text-right tabular-nums font-bold">@Model.DevirSonu.ToString("N2")</td>
+                        <td class="px-5 py-3 text-[color:var(--muted)]">Devir Sonu</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Sorunlar (varsa) -->
+@if (Model.Sorunlar.Count > 0)
+{
+    <div class="rounded-xl border border-[color:var(--line)] bg-white mb-8 hidden" data-panel="sorunlar">
+        <div class="px-5 py-4 border-b border-[color:var(--line)]">
+            <h2 class="text-sm font-semibold">Sorunlu Stoklar</h2>
+            <p class="text-xs text-[color:var(--muted)] mt-0.5">@Model.Sorunlar.Count kayit</p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-[color:var(--line)] text-left text-xs font-medium uppercase tracking-wider text-[color:var(--muted)]">
+                        <th class="px-5 py-3">Tarih</th>
+                        <th class="px-5 py-3 text-right">Mekan</th>
+                        <th class="px-5 py-3">Sorun Tipi</th>
+                        <th class="px-5 py-3 text-right">Miktar</th>
+                        <th class="px-5 py-3">Aciklama</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[color:var(--line)]">
+                    @foreach (var s in Model.Sorunlar)
+                    {
+                        <tr class="hover:bg-[color:var(--bg)] transition-colors">
+                            <td class="px-5 py-3 tabular-nums">@s.EnvanterTarihi.ToString("dd.MM.yyyy")</td>
+                            <td class="px-5 py-3 tabular-nums">@Db.MekanAdi(s.MekanId)</td>
+                            <td class="px-5 py-3">
+                                <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-red-50 text-red-700">@s.SorunTipi</span>
+                            </td>
+                            <td class="px-5 py-3 text-right tabular-nums">@s.StokMiktar.ToString("N2")</td>
+                            <td class="px-5 py-3 text-[color:var(--muted)] max-w-xs truncate">@(s.Aciklama ?? "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Acilis Envanter (varsa) -->
+@if (Model.AcilisEnvanter.Count > 0)
+{
+    <div class="rounded-xl border border-[color:var(--line)] bg-white mb-8 hidden" data-panel="acilis">
+        <div class="px-5 py-4 border-b border-[color:var(--line)]">
+            <h2 class="text-sm font-semibold">Acilis Envanter</h2>
+            <p class="text-xs text-[color:var(--muted)] mt-0.5">Baslangic stok miktarlari</p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-[color:var(--line)] text-left text-xs font-medium uppercase tracking-wider text-[color:var(--muted)]">
+                        <th class="px-5 py-3">Envanter Tarihi</th>
+                        <th class="px-5 py-3 text-right">Mekan</th>
+                        <th class="px-5 py-3 text-right">Miktar</th>
+                        <th class="px-5 py-3">Kayit Tarihi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[color:var(--line)]">
+                    @foreach (var a in Model.AcilisEnvanter)
+                    {
+                        <tr class="hover:bg-[color:var(--bg)] transition-colors">
+                            <td class="px-5 py-3 tabular-nums">@a.EnvanterTarihi.ToString("dd.MM.yyyy")</td>
+                            <td class="px-5 py-3 tabular-nums">@Db.MekanAdi(a.MekanId)</td>
+                            <td class="px-5 py-3 text-right tabular-nums font-medium">@a.StokMiktar.ToString("N2")</td>
+                            <td class="px-5 py-3 tabular-nums text-[color:var(--muted)]">@a.KayitTarihi.ToString("dd.MM.yyyy HH:mm")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Ortalama Maliyet Gecmisi (varsa) -->
+@if (Model.OrtalamaMaliyetler.Count > 0)
+{
+    <div class="rounded-xl border border-[color:var(--line)] bg-white mb-8 hidden" data-panel="ortalama">
+        <div class="px-5 py-4 border-b border-[color:var(--line)]">
+            <h2 class="text-sm font-semibold">Ortalama Maliyet Gecmisi</h2>
+            <p class="text-xs text-[color:var(--muted)] mt-0.5">Aylik ortalama maliyet hesaplamalari</p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-[color:var(--line)] text-left text-xs font-medium uppercase tracking-wider text-[color:var(--muted)]">
+                        <th class="px-5 py-3">Yil/Ay</th>
+                        <th class="px-5 py-3 text-right">Ay Sonu Miktar</th>
+                        <th class="px-5 py-3 text-right">Birim Maliyet</th>
+                        <th class="px-5 py-3 text-right">Ay Sonu Tutar</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[color:var(--line)]">
+                    @foreach (var o in Model.OrtalamaMaliyetler)
+                    {
+                        <tr class="hover:bg-[color:var(--bg)] transition-colors">
+                            <td class="px-5 py-3 font-medium tabular-nums">@(o.YilAy / 100)/@((o.YilAy % 100).ToString("D2"))</td>
+                            <td class="px-5 py-3 text-right tabular-nums">@o.AySonuMiktar.ToString("N2")</td>
+                            <td class="px-5 py-3 text-right tabular-nums font-medium">@o.AySonuBirimMaliyet.ToString("N4")</td>
+                            <td class="px-5 py-3 text-right tabular-nums">@o.AySonuTutar.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Ortalama Maliyet Trend Chart -->
+@if (Model.OrtalamaMaliyetler.Count > 1)
+{
+<div class="rounded-xl border border-[color:var(--line)] bg-white p-5 mt-6 hidden" data-panel="ortalama">
+    <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-3">Ortalama Birim Maliyet Trendi</div>
+    <div class="h-48"><canvas id="chartOrtTrend"></canvas></div>
+</div>
+}
+
+<!-- Manuel Maliyet (varsa) -->
+@if (Model.ManuelMaliyetler.Count > 0)
+{
+    <div class="rounded-xl border border-[color:var(--line)] bg-white mb-8 hidden" data-panel="manuel">
+        <div class="px-5 py-4 border-b border-[color:var(--line)]">
+            <h2 class="text-sm font-semibold">Manuel Maliyet Kayitlari</h2>
+            <p class="text-xs text-[color:var(--muted)] mt-0.5">Kullanici tarafindan girilen override maliyetler</p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-[color:var(--line)] text-left text-xs font-medium uppercase tracking-wider text-[color:var(--muted)]">
+                        <th class="px-5 py-3">Birim Maliyet</th>
+                        <th class="px-5 py-3">Gecerlilik</th>
+                        <th class="px-5 py-3">Aciklama</th>
+                        <th class="px-5 py-3">Eklenme</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[color:var(--line)]">
+                    @foreach (var m in Model.ManuelMaliyetler)
+                    {
+                        <tr class="hover:bg-[color:var(--bg)] transition-colors">
+                            <td class="px-5 py-3 font-medium text-[color:var(--accent)]">@m.BirimMaliyet.ToString("N4") TL</td>
+                            <td class="px-5 py-3 tabular-nums text-xs">
+                                @m.GecerliBaslangic.ToString("dd.MM.yyyy")
+                                @if (m.GecerliBitis.HasValue) { <span>— @m.GecerliBitis.Value.ToString("dd.MM.yyyy")</span> }
+                                else { <span class="text-green-600">→ surekli</span> }
+                            </td>
+                            <td class="px-5 py-3 text-[color:var(--muted)] max-w-xs truncate">@(m.Aciklama ?? "-")</td>
+                            <td class="px-5 py-3 tabular-nums text-xs text-[color:var(--muted)]">@m.EklenmeTarihi.ToString("dd.MM.yyyy")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Devir ozeti artik tablo icinde (ilk ve son satir) -->
+
+@section Scripts {
+<script>
+@if (Model.OrtalamaMaliyetler.Count > 1) {
+    var labels = string.Join(",", Model.OrtalamaMaliyetler.OrderBy(o => o.YilAy).Select(o => $"'{o.YilAy}'"));
+    var data = string.Join(",", Model.OrtalamaMaliyetler.OrderBy(o => o.YilAy).Select(o => o.AySonuBirimMaliyet.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)));
+    @Html.Raw($"BKM.line('chartOrtTrend', [{labels}], [{{ label: 'Ort. Birim Maliyet', data: [{data}], borderColor: '#8b5cf6', backgroundColor: '#8b5cf620' }}]);")
+}
+
+// Tab navigasyonu
+(() => {
+    const tabs = document.querySelectorAll('.tab-btn');
+    const panels = document.querySelectorAll('[data-panel]');
+    tabs.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const target = btn.dataset.tab;
+            tabs.forEach(t => t.classList.remove('active', 'bg-white', 'shadow-sm', 'text-[color:var(--ink)]'));
+            btn.classList.add('active', 'bg-white', 'shadow-sm', 'text-[color:var(--ink)]');
+            panels.forEach(p => {
+                if (p.dataset.panel === target) p.classList.remove('hidden');
+                else p.classList.add('hidden');
+            });
+        });
+    });
+    // URL'den tab state'i oku veya ilk tab'i ac
+    const urlTab = new URLSearchParams(location.search).get('tab');
+    const targetBtn = urlTab
+        ? document.querySelector(`.tab-btn[data-tab="${urlTab}"]`)
+        : document.querySelector('.tab-btn.active');
+    if (targetBtn) targetBtn.click();
+})();
+
+// Stok Hareketleri filtre: sube aninda, tarih blur'da submit
+(() => {
+    const form = document.getElementById('hrkFilterForm');
+    if (!form) return;
+    // Sube select: aninda submit
+    form.querySelectorAll('select').forEach(el => {
+        el.addEventListener('change', () => form.submit());
+    });
+    // Tarih inputlari: focus kaybedince submit (yazma bitsin diye)
+    form.querySelectorAll('input[type="date"]').forEach(el => {
+        const orig = el.value;
+        el.addEventListener('blur', () => { if (el.value !== orig) form.submit(); });
+    });
+})();
+
+async function toggleDevreDisiDetay(stkId) {
+    const btn = document.getElementById('dd-toggle-btn');
+    const isDD = btn.textContent.trim() === 'Aktif Et';
+    const ok = await BKM.dd.toggle(stkId, isDD);
+    if (ok) location.reload();
+}
+</script>
+}

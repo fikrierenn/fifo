@@ -1,0 +1,443 @@
+@page
+@model App.Features.Islem.JobBaslatModel
+@{
+    ViewData["Title"] = "Batch Baslat";
+}
+
+<section class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+    <div class="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-8 shadow-lg">
+        <div class="absolute inset-0 bg-gradient-to-br from-violet-50 via-transparent to-transparent"></div>
+        <div class="relative">
+            <div class="text-xs font-medium uppercase tracking-widest text-violet-600">Batch Islem</div>
+            <h1 class="mt-3 text-3xl font-semibold leading-tight text-gray-900">Aylik FIFO Batch Baslat</h1>
+            <p class="mt-4 text-sm leading-6 text-gray-500">
+                Secilen donem icin tum hareketli urunleri 500'luk batch'ler halinde FIFO maliyetlendirir.
+                Opsiyonel olarak ortalama maliyet hesaplamasi da yapilir.
+            </p>
+            <div class="mt-6 flex flex-wrap gap-2 text-xs text-gray-400">
+                <span class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1">sp_Fifo_AylikCalistirBatch</span>
+                <span class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1">sp_Fifo_BatchRunBaslat</span>
+                <span class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1">TVP: StkIdListType</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
+        <div class="text-xs font-medium uppercase tracking-widest text-gray-400">Adim kontrolu</div>
+        <div class="mt-2 text-lg font-semibold text-gray-900">Batch akisi</div>
+        <div class="mt-5 space-y-4 text-sm text-gray-500">
+            <div class="flex items-start gap-3">
+                <span class="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-violet-500"></span>
+                <div>
+                    <div class="font-semibold text-gray-900">Urun listesi</div>
+                    <div>Hareketli urunler sorgulanir.</div>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <span class="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-indigo-500"></span>
+                <div>
+                    <div class="font-semibold text-gray-900">Batch calistir</div>
+                    <div>500'luk gruplar halinde FIFO hesaplama yapilir.</div>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <span class="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-teal-500"></span>
+                <div>
+                    <div class="font-semibold text-gray-900">Ortalama hesapla</div>
+                    <div>Aylik ortalama maliyet hesaplanir (opsiyonel).</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
+    <form method="post" class="grid gap-6" data-run-form="batch">
+        <div class="grid gap-4 lg:grid-cols-3">
+            <label class="block text-sm text-gray-600">
+                <span class="font-medium">Yil</span>
+                <input type="number" asp-for="Yil" min="2020" max="2099"
+                       class="mt-2 block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20" />
+            </label>
+            <label class="block text-sm text-gray-600">
+                <span class="font-medium">Ay</span>
+                <select asp-for="Ay"
+                        class="mt-2 block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20">
+                    <option value="1">1 - Ocak</option>
+                    <option value="2">2 - Subat</option>
+                    <option value="3">3 - Mart</option>
+                    <option value="4">4 - Nisan</option>
+                    <option value="5">5 - Mayis</option>
+                    <option value="6">6 - Haziran</option>
+                    <option value="7">7 - Temmuz</option>
+                    <option value="8">8 - Agustos</option>
+                    <option value="9">9 - Eylul</option>
+                    <option value="10">10 - Ekim</option>
+                    <option value="11">11 - Kasim</option>
+                    <option value="12">12 - Aralik</option>
+                </select>
+            </label>
+            <label class="flex items-center gap-2 text-sm text-gray-700 lg:mt-8">
+                <input type="checkbox" asp-for="OrtalamaHesapla" checked
+                       class="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500/30" />
+                <span class="font-medium">Ortalama maliyet hesapla</span>
+            </label>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+            <button type="submit"
+                    class="inline-flex items-center justify-center rounded-full bg-violet-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-600/25 transition hover:-translate-y-0.5 hover:bg-violet-700 active:translate-y-0"
+                    data-run-submit>
+                Batch Baslat
+            </button>
+            <span class="text-xs text-gray-400">Uzun sureli islem. Urun sayisina gore 10-60 dk surer.</span>
+        </div>
+
+        <!-- Batch Progress Bar -->
+        <div class="hidden rounded-xl border border-gray-200 bg-gray-50/50 p-4" data-batch-progress>
+            <div class="flex items-center justify-between text-sm">
+                <span class="font-medium text-gray-700">Batch Ilerlemesi</span>
+                <span class="text-xs text-gray-500" data-batch-count>0 / 0</span>
+            </div>
+            <div class="mt-2 h-3 overflow-hidden rounded-full bg-gray-200">
+                <div class="h-full rounded-full bg-violet-500 transition-all duration-500 ease-out" style="width: 0%" data-batch-bar></div>
+            </div>
+            <div class="mt-1.5 text-xs text-gray-400" data-batch-urun></div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-4">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <div class="text-[11px] font-medium uppercase tracking-widest text-gray-400">Zaman cizelgesi</div>
+                    <div class="text-sm font-semibold text-gray-900">Batch FIFO akisi</div>
+                </div>
+                <span class="rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-medium text-gray-500" data-run-status>Hazir</span>
+            </div>
+
+            <ol class="relative mt-4 space-y-3 border-l-2 border-gray-200 pl-6" data-run-timeline>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="urun_listesi" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold text-gray-900">Urun Listesi</div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-400">Hareketli urunler sorgulanir.</div>
+                </li>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="batch_calistir" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold text-gray-900">Batch Calistir</div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-400">500'luk gruplar halinde FIFO hesaplama.</div>
+                </li>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="ortalama_hesapla" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold text-gray-900">Ortalama Hesapla</div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-400">Aylik ortalama maliyet hesaplanir.</div>
+                </li>
+            </ol>
+        </div>
+
+        <!-- Mesaj alani -->
+        <div class="hidden rounded-xl border px-4 py-3 text-sm" data-run-message></div>
+
+        <!-- Hidden cascade/onayli inputs -->
+        <input type="hidden" name="Cascade" value="false" data-cascade-input />
+        <input type="hidden" name="Onayli" value="false" data-onayli-input />
+    </form>
+</section>
+
+<!-- Uyari Modal -->
+<div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40" id="cascadeModal">
+    <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-800">
+        <div class="flex items-center gap-3 text-amber-600">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <h3 class="text-lg font-semibold">Donem Cakismasi</h3>
+        </div>
+        <p class="mt-3 text-sm text-gray-600 dark:text-gray-300" id="cascadeMessage"></p>
+        <div class="mt-3 max-h-40 overflow-y-auto rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs dark:border-gray-700 dark:bg-gray-900" id="cascadeDonemler"></div>
+        <div class="mt-5 flex justify-end gap-3">
+            <button onclick="closeCascadeModal()" class="rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">Iptal</button>
+            <button onclick="submitWithCascade(false)" class="rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600">Sadece Bu Donemi Calistir</button>
+            <button onclick="submitWithCascade(true)" class="rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700">Cascade Calistir</button>
+        </div>
+    </div>
+</div>
+</section>
+
+@if (Model.SonIslemler.Count > 0)
+{
+<section class="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+    <div class="flex items-center justify-between">
+        <div>
+            <div class="text-xs font-medium uppercase tracking-widest text-gray-400">Gecmis</div>
+            <div class="text-lg font-semibold text-gray-900 dark:text-white">Son Islemler</div>
+        </div>
+        <a href="/Islem/RunHistory" class="text-xs font-medium text-violet-600 hover:text-violet-700">Tumu &rarr;</a>
+    </div>
+    <div class="mt-4 overflow-x-auto">
+        <table class="w-full text-left text-sm">
+            <thead>
+                <tr class="border-b border-gray-100 text-xs font-medium uppercase tracking-wider text-gray-400 dark:border-gray-700">
+                    <th class="pb-3 pr-4">Islem</th>
+                    <th class="pb-3 pr-4">Baslangic</th>
+                    <th class="pb-3 pr-4">Sure</th>
+                    <th class="pb-3 pr-4">Durum</th>
+                    <th class="pb-3">Aciklama</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50 dark:divide-gray-700">
+                @foreach (var islem in Model.SonIslemler)
+                {
+                    var durumClass = islem.Durum switch {
+                        "TAMAMLANDI" => "bg-green-50 text-green-700 border-green-200",
+                        "HATA" => "bg-red-50 text-red-700 border-red-200",
+                        "CALISIYOR" => "bg-violet-50 text-violet-700 border-violet-200",
+                        _ => "bg-gray-50 text-gray-600 border-gray-200"
+                    };
+                    <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/30">
+                        <td class="py-3 pr-4 font-medium text-gray-900 dark:text-white">@islem.IslemAdi</td>
+                        <td class="py-3 pr-4 text-xs text-gray-500">@islem.Baslangic.ToString("dd.MM.yyyy HH:mm")</td>
+                        <td class="py-3 pr-4 text-xs text-gray-500">@islem.SureStr</td>
+                        <td class="py-3 pr-4">
+                            <span class="rounded-full border px-2 py-0.5 text-[10px] font-medium @durumClass">@islem.Durum</span>
+                        </td>
+                        <td class="py-3 text-xs text-gray-500 max-w-xs truncate">@(islem.Aciklama ?? "")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+}
+
+@section Scripts
+{
+<script>
+(() => {
+    const form = document.querySelector("[data-run-form='batch']");
+    if (!form) return;
+
+    const statusPill    = form.querySelector("[data-run-status]");
+    const submitBtn     = form.querySelector("[data-run-submit]");
+    const steps         = Array.from(form.querySelectorAll("[data-step]"));
+    const msgBox        = form.querySelector("[data-run-message]");
+    const progressBox   = form.querySelector("[data-batch-progress]");
+    const batchCountEl  = form.querySelector("[data-batch-count]");
+    const batchBarEl    = form.querySelector("[data-batch-bar]");
+    const batchUrunEl   = form.querySelector("[data-batch-urun]");
+
+    const stepLabels  = { idle: "Bekliyor", active: "Calisiyor", done: "Tamam", skipped: "Atlandi", error: "Hata" };
+    const runLabels   = { READY: "Hazir", CALISIYOR: "Calisiyor", TAMAMLANDI: "Tamamlandi", HATA: "Hata" };
+
+    const statusColors = {
+        idle:    { border: "border-gray-200",    dot: "bg-gray-300",    badge: "text-gray-400 border-gray-200" },
+        active:  { border: "border-violet-300",  dot: "bg-violet-500",  badge: "text-violet-600 border-violet-200 bg-violet-50" },
+        done:    { border: "border-green-300",   dot: "bg-green-500",   badge: "text-green-600 border-green-200 bg-green-50" },
+        skipped: { border: "border-gray-300",    dot: "bg-gray-400",    badge: "text-gray-500 border-gray-200 bg-gray-50" },
+        error:   { border: "border-red-300",     dot: "bg-red-500",     badge: "text-red-600 border-red-200 bg-red-50" }
+    };
+
+    function setStepStatus(el, status) {
+        const prev = el.dataset.status || "idle";
+        el.dataset.status = status;
+        const prevC = statusColors[prev] || statusColors.idle;
+        const newC  = statusColors[status] || statusColors.idle;
+        el.classList.remove(prevC.border); el.classList.add(newC.border);
+        const dotInner = el.querySelector("[data-dot-inner]");
+        if (dotInner) { dotInner.classList.remove(prevC.dot); dotInner.classList.add(newC.dot); }
+        const badge = el.querySelector("[data-step-state]");
+        if (badge) {
+            badge.className = "rounded-full border px-2 py-0.5 text-[10px] font-medium " + newC.badge;
+            badge.textContent = stepLabels[status] || stepLabels.idle;
+        }
+    }
+
+    function showMessage(text, isError) {
+        if (!msgBox) return;
+        msgBox.classList.remove("hidden", "border-red-200", "bg-red-50", "text-red-600",
+                                "border-green-200", "bg-green-50", "text-green-700");
+        msgBox.classList.add(isError ? "border-red-200" : "border-green-200",
+                             isError ? "bg-red-50" : "bg-green-50",
+                             isError ? "text-red-600" : "text-green-700");
+        msgBox.textContent = text;
+    }
+
+    function hideMessage() { if (msgBox) msgBox.classList.add("hidden"); }
+    function lock()   { submitBtn.disabled = true;  submitBtn.classList.add("opacity-60", "cursor-wait"); }
+    function unlock() { submitBtn.disabled = false; submitBtn.classList.remove("opacity-60", "cursor-wait"); }
+    function setRunStatus(label) { if (statusPill) statusPill.textContent = label; }
+
+    function mapDurum(d) {
+        if (!d) return "idle";
+        switch (d.toUpperCase()) {
+            case "CALISIYOR": return "active";
+            case "TAMAMLANDI": return "done";
+            case "ATLANDI": return "skipped";
+            case "HATA": return "error";
+            default: return "idle";
+        }
+    }
+
+    function applySteps(adimlar) {
+        const byKey = new Map(adimlar.map(a => [a.adimKodu, a]));
+        steps.forEach(el => {
+            const key = el.dataset.stepKey;
+            const match = byKey.get(key);
+            if (match) setStepStatus(el, mapDurum(match.durum));
+        });
+    }
+
+    function updateBatchProgress(batch) {
+        if (!batch || !batch.toplam) { progressBox.classList.add("hidden"); return; }
+        progressBox.classList.remove("hidden");
+        const pct = batch.toplam > 0 ? Math.round((batch.tamamlanan / batch.toplam) * 100) : 0;
+        batchCountEl.textContent = batch.tamamlanan + " / " + batch.toplam + " batch";
+        batchBarEl.style.width = pct + "%";
+        batchUrunEl.textContent = "Toplam " + batch.urun + " urun";
+    }
+
+    function reset() {
+        steps.forEach(el => setStepStatus(el, "idle"));
+        setRunStatus("Hazir");
+        hideMessage();
+        progressBox.classList.add("hidden");
+    }
+
+    function buildUrl(handler, params) {
+        const url = new URL(window.location.pathname, window.location.origin);
+        url.searchParams.set("handler", handler);
+        if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+        return url.toString();
+    }
+
+    let pollTimer = null;
+    let activeIslemId = null;
+
+    function stopPolling() { if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; } }
+
+    async function poll() {
+        if (!activeIslemId) return;
+        try {
+            const resp = await fetch(buildUrl("Durum", { islemId: activeIslemId }),
+                { headers: { "Accept": "application/json" } });
+            if (!resp.ok) throw new Error("Durum okunamadi");
+            const data = await resp.json();
+            if (!data.ok) throw new Error(data.error || "Durum okunamadi");
+
+            setRunStatus(runLabels[data.durum] || data.durum);
+            if (Array.isArray(data.adimlar)) applySteps(data.adimlar);
+            if (data.batch) updateBatchProgress(data.batch);
+
+            if (data.durum === "TAMAMLANDI") {
+                stopPolling(); activeIslemId = null; unlock();
+                showMessage(data.aciklama || "Batch tamamlandi.", false);
+                return;
+            }
+            if (data.durum === "HATA") {
+                stopPolling(); activeIslemId = null; unlock();
+                showMessage(data.aciklama || "Islem sirasinda hata olustu.", true);
+                return;
+            }
+            pollTimer = setTimeout(poll, 2000);
+        } catch (err) {
+            stopPolling(); activeIslemId = null;
+            setRunStatus("Hata");
+            showMessage("Durum sorgusu basarisiz: " + err.message, true);
+            unlock();
+        }
+    }
+
+    reset();
+
+    async function doSubmit() {
+        lock(); reset();
+        setRunStatus("Baslatiliyor...");
+
+        try {
+            const resp = await fetch(buildUrl("Start"), {
+                method: "POST",
+                body: new FormData(form),
+                headers: { "X-Requested-With": "XMLHttpRequest" }
+            });
+            const data = await resp.json();
+
+            // Uyari: sonraki donemler var
+            if (data.uyari) {
+                unlock();
+                setRunStatus("Hazir");
+                showCascadeModal(data.mesaj, data.sonrakiDonemler);
+                return;
+            }
+
+            if (!resp.ok || !data.ok) throw new Error(data?.error || "Baslatma hatasi");
+
+            activeIslemId = data.islemId;
+            setRunStatus("Calisiyor");
+            stopPolling();
+            pollTimer = setTimeout(poll, 1000);
+        } catch (err) {
+            setRunStatus("Hata");
+            showMessage(err.message, true);
+            unlock();
+        }
+    }
+
+    form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (submitBtn.disabled) return;
+        // Eger onayli ise cascade/onayli zaten set, tekrar reset etme
+        if (form.querySelector("[data-onayli-input]").value !== "true") {
+            form.querySelector("[data-cascade-input]").value = "false";
+            form.querySelector("[data-onayli-input]").value = "false";
+        }
+        doSubmit();
+    });
+
+    // Global erişim icin
+    _doSubmitRef = doSubmit;
+})();
+
+// Cascade modal fonksiyonlari
+function showCascadeModal(mesaj, donemler) {
+    document.getElementById("cascadeMessage").textContent = mesaj;
+    const el = document.getElementById("cascadeDonemler");
+    el.innerHTML = donemler.map(d =>
+        `<div class="flex justify-between py-1 border-b border-gray-100 last:border-0">
+            <span class="font-medium">${d.donemYil}-${String(d.donemAy).padStart(2,'0')}</span>
+            <span class="text-gray-400">${d.toplamKayit} kayit (${d.detay})</span>
+        </div>`
+    ).join("");
+    document.getElementById("cascadeModal").classList.remove("hidden");
+    document.getElementById("cascadeModal").classList.add("flex");
+}
+
+function closeCascadeModal() {
+    document.getElementById("cascadeModal").classList.add("hidden");
+    document.getElementById("cascadeModal").classList.remove("flex");
+}
+
+let _doSubmitRef = null;
+
+function submitWithCascade(cascade) {
+    closeCascadeModal();
+    const form = document.querySelector("[data-run-form='batch']");
+    form.querySelector("[data-cascade-input]").value = cascade ? "true" : "false";
+    form.querySelector("[data-onayli-input]").value = "true";
+    if (_doSubmitRef) _doSubmitRef();
+}
+</script>
+}

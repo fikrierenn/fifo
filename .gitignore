@@ -1,0 +1,34 @@
+# .NET build output
+**/bin/
+**/obj/
+*.user
+*.suo
+.vs/
+
+# IDE
+.idea/
+*.swp
+.vscode/
+
+# Logs
+*.log
+
+# Credentials / environment-specific settings
+app/appsettings.Development.json
+app/appsettings.Production.json
+hangfire/appsettings.Development.json
+hangfire/appsettings.Production.json
+sqlcli.json
+
+# SQL deploy output logs (may contain sensitive data, regenerate on deploy)
+v2-production/*.out
+SQL-Improvements/**/*.out
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Test results
+TestResults/
+coverage/
+*.trx

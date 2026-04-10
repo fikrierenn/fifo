@@ -1,0 +1,155 @@
+@page
+@model App.Features.Rapor.SorunluStoklarModel
+@{
+    ViewData["Title"] = "Sorunlu Stoklar";
+}
+
+@{
+    string SorunBadgeCss(string tip) => tip switch
+    {
+        "ALIS_YOK" => "bg-red-100 text-red-700",
+        "STOK_YETERSIZ" => "bg-orange-100 text-orange-700",
+        "PROSEDUR_HATASI" => "bg-purple-100 text-purple-700",
+        _ when tip.EndsWith("_TAMAMLANDI") => "bg-yellow-100 text-yellow-700",
+        _ when tip.StartsWith("SENTETIK") => "bg-blue-100 text-blue-700",
+        _ => "bg-gray-100 text-gray-600"
+    };
+}
+
+<div class="space-y-6">
+    <div>
+        <h1 class="text-2xl font-semibold">Sorunlu Stoklar</h1>
+        <p class="mt-1 text-sm text-[color:var(--muted)]">FIFO hesaplamasinda sorun tespit edilen stoklari inceleyin.</p>
+    </div>
+
+    <form method="get" class="flex flex-wrap items-end gap-3">
+        <div>
+            <label for="EnvanterTarihi" class="block text-xs font-medium text-gray-600">Envanter Tarihi</label>
+            <select name="EnvanterTarihi" id="EnvanterTarihi"
+                    class="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                <option value="">Tumu</option>
+                @foreach (var t in Model.MevcutTarihler)
+                {
+                    <option value="@t.ToString("yyyy-MM-dd")" selected="@(Model.EnvanterTarihi?.Date == t.Date)">
+                        @t.ToString("yyyy-MM-dd")
+                    </option>
+                }
+            </select>
+        </div>
+        <div>
+            <label for="SorunTipi" class="block text-xs font-medium text-gray-600">Sorun Tipi</label>
+            <select name="SorunTipi" id="SorunTipi"
+                    class="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                <option value="">Tumu</option>
+                @foreach (var o in Model.OzetListesi)
+                {
+                    <option value="@o.SorunTipi" selected="@(Model.SorunTipi == o.SorunTipi)">@o.SorunTipi</option>
+                }
+            </select>
+        </div>
+        <button type="submit"
+                class="rounded bg-blue-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
+            Filtrele
+        </button>
+    </form>
+
+    @if (Model.OzetListesi.Count > 0)
+    {
+        <div class="flex flex-wrap gap-3">
+            @foreach (var o in Model.OzetListesi)
+            {
+                <div class="rounded-lg border border-gray-200 bg-white p-4 min-w-[160px]">
+                    <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium @SorunBadgeCss(o.SorunTipi)">@o.SorunTipi</span>
+                    <div class="mt-2 flex items-baseline gap-2">
+                        <span class="text-xl font-semibold">@o.UrunSayisi</span>
+                        <span class="text-xs text-gray-500">urun</span>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Toplam: @o.ToplamMiktar.ToString("N2")</p>
+                </div>
+            }
+        </div>
+    }
+
+    @if (Model.Satirlar.Count == 0)
+    {
+        <div class="rounded-md border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+            Secilen filtreler icin sorunlu stok bulunamadi.
+        </div>
+    }
+    else
+    {
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-gray-700">Sorunlu Stok Listesi — <span id="shown-count">@Model.Satirlar.Count</span> satir</span>
+            <a href="?handler=Export&EnvanterTarihi=@Model.EnvanterTarihi?.ToString("yyyy-MM-dd")&SorunTipi=@Model.SorunTipi" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50 transition">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                CSV
+            </a>
+        </div>
+        <div class="overflow-x-auto rounded-lg border border-gray-200">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-2 text-left font-medium text-gray-600">Envanter Tarihi</th>
+                        <th class="px-4 py-2 text-left font-medium text-gray-600">Mekan</th>
+                        <th class="px-4 py-2 text-left font-medium text-gray-600">Urun</th>
+                        <th class="px-4 py-2 text-center font-medium text-gray-600">Sorun Tipi</th>
+                        <th class="px-4 py-2 text-right font-medium text-gray-600">Miktar</th>
+                        <th class="px-4 py-2 text-left font-medium text-gray-600">Aciklama</th>
+                        <th class="px-4 py-2 text-left font-medium text-gray-600">Kayit Tarihi</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body" class="divide-y divide-gray-100">
+                    @foreach (var s in Model.Satirlar)
+                    {
+                        <tr class="hover:bg-gray-50 cursor-pointer @(Db.DevreDisiMi(s.StkId) ? "devre-disi" : "")" data-href="/Rapor/UrunDetay?stkId=@s.StkId" data-stkid="@s.StkId">
+                            <td class="px-4 py-2 font-mono text-xs">@s.EnvanterTarihi.ToString("yyyy-MM-dd")</td>
+                            <td class="px-4 py-2">@Db.MekanAdi(s.MekanId)</td>
+                            <td class="px-4 py-2"><a href="/Rapor/UrunDetay?stkId=@s.StkId" class="text-blue-600 hover:underline dark:text-blue-400">@Db.UrunAdi(s.StkId)</a></td>
+                            <td class="px-4 py-2 text-center">
+                                <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium @SorunBadgeCss(s.SorunTipi)">@s.SorunTipi</span>
+                            </td>
+                            <td class="px-4 py-2 text-right font-mono">@s.StokMiktar.ToString("N2")</td>
+                            <td class="px-4 py-2 text-xs max-w-xs truncate" title="@s.Aciklama">@(s.Aciklama ?? "-")</td>
+                            <td class="px-4 py-2 font-mono text-xs">@s.KayitTarihi.ToString("yyyy-MM-dd HH:mm")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div id="load-spinner" class="hidden py-4 text-center">
+            <svg class="inline h-6 w-6 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+            <span class="ml-2 text-sm text-gray-500">Yukleniyor...</span>
+        </div>
+        <div id="load-done" class="hidden py-3 text-center text-xs text-gray-400">Tum veriler yuklendi.</div>
+    }
+</div>
+
+@section Scripts {
+<script>
+@if (Model.Satirlar.Count > 0 && Model.HasMore)
+{
+    @:(() => {
+    @:    function sorunBadge(tip) {
+    @:        let css = 'bg-gray-100 text-gray-600';
+    @:        if (tip === 'ALIS_YOK') css = 'bg-red-100 text-red-700';
+    @:        else if (tip === 'STOK_YETERSIZ') css = 'bg-orange-100 text-orange-700';
+    @:        else if (tip === 'PROSEDUR_HATASI') css = 'bg-purple-100 text-purple-700';
+    @:        else if (tip.endsWith('_TAMAMLANDI')) css = 'bg-yellow-100 text-yellow-700';
+    @:        else if (tip.startsWith('SENTETIK')) css = 'bg-blue-100 text-blue-700';
+    @:        return `<span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium ${css}">${tip}</span>`;
+    @:    }
+    @:    BKM.infiniteScroll({
+    @:        tbodyId: 'table-body',
+    @:        spinnerId: 'load-spinner',
+    @:        doneId: 'load-done',
+    @:        shownCountId: 'shown-count',
+    @:        initialOffset: @Model.Satirlar.Count,
+    @:        hasMore: true,
+    @:        filterParams: '@Html.Raw((Model.EnvanterTarihi.HasValue ? $"EnvanterTarihi={Model.EnvanterTarihi:yyyy-MM-dd}" : "") + (!string.IsNullOrEmpty(Model.SorunTipi) ? (Model.EnvanterTarihi.HasValue ? "&" : "") + $"SorunTipi={Model.SorunTipi}" : ""))',
+    @:        rowClass: 'hover:bg-gray-50 cursor-pointer',
+    @:        renderRow: r => `<td class="px-4 py-2 font-mono text-xs">${r.envanterTarihi}</td><td class="px-4 py-2">${r.mekanAdi}</td><td class="px-4 py-2"><a href="/Rapor/UrunDetay?stkId=${r.stkId}" class="text-blue-600 hover:underline dark:text-blue-400">${r.urunAdi}</a></td><td class="px-4 py-2 text-center">${sorunBadge(r.sorunTipi)}</td><td class="px-4 py-2 text-right font-mono">${r.stokMiktar}</td><td class="px-4 py-2 text-xs max-w-xs truncate" title="${r.aciklama}">${r.aciklama}</td><td class="px-4 py-2 font-mono text-xs">${r.kayitTarihi}</td>`
+    @:    });
+    @:})();
+}
+</script>
+}

@@ -1,0 +1,127 @@
+@page
+@model App.Features.Ayar.FallbackFiyatModel
+@{
+    ViewData["Title"] = "Fallback Fiyat";
+}
+
+<!-- Breadcrumb -->
+<nav class="mb-4 text-xs text-[color:var(--muted)]">
+    <a href="/" class="hover:text-[color:var(--ink)]">Dashboard</a>
+    <span class="mx-1">/</span>
+    <span class="text-[color:var(--ink)] font-medium">Fallback Fiyat</span>
+</nav>
+
+<div class="mb-8">
+    <h1 class="text-2xl font-semibold">Fallback Fiyatlari</h1>
+    <p class="mt-1 text-sm text-[color:var(--muted)]">Alis faturasi bulunamayan urunler icin yedek fiyat tanimlari.</p>
+</div>
+
+<!-- Mesaj -->
+@if (!string.IsNullOrEmpty(Model.Mesaj))
+{
+    var mesajCss = Model.MesajHata ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700";
+    <div class="rounded-lg border p-3 mb-6 text-sm @mesajCss">@Model.Mesaj</div>
+}
+
+<!-- Ekleme Formu -->
+<div class="rounded-xl border border-[color:var(--line)] bg-white p-5 mb-8">
+    <h2 class="text-sm font-semibold mb-4">Yeni Fallback Fiyat Ekle</h2>
+    <form method="post" asp-page-handler="Ekle">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div>
+                <label class="block text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-1">Stok ID</label>
+                <input type="number" name="EkleStkId" required
+                       class="w-full rounded-lg border border-[color:var(--line)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]" />
+            </div>
+            <div>
+                <label class="block text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-1">Satin Alma Sarti</label>
+                <input type="text" name="EkleSatinalmaSarti" required
+                       class="w-full rounded-lg border border-[color:var(--line)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]" />
+            </div>
+            <div>
+                <label class="block text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-1">Mekan ID</label>
+                <input type="number" name="EkleMekanId" required
+                       class="w-full rounded-lg border border-[color:var(--line)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]" />
+            </div>
+            <div>
+                <label class="block text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-1">Birim Maliyet</label>
+                <input type="number" name="EkleBirimMaliyet" step="0.0001" required
+                       class="w-full rounded-lg border border-[color:var(--line)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]" />
+            </div>
+            <div>
+                <label class="block text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-1">Miktar</label>
+                <input type="number" name="EkleMiktar" step="0.01" required
+                       class="w-full rounded-lg border border-[color:var(--line)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]" />
+            </div>
+            <div>
+                <label class="block text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-1">Aciklama</label>
+                <input type="text" name="EkleAciklama"
+                       class="w-full rounded-lg border border-[color:var(--line)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]" />
+            </div>
+        </div>
+        <div class="mt-4">
+            <button type="submit"
+                    class="rounded-lg bg-[color:var(--accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity">
+                Ekle
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Mevcut Fiyatlar Tablosu -->
+<div class="rounded-xl border border-[color:var(--line)] bg-white">
+    <div class="px-5 py-4 border-b border-[color:var(--line)]">
+        <h2 class="text-sm font-semibold">Mevcut Fallback Fiyatlari</h2>
+        <p class="text-xs text-[color:var(--muted)] mt-0.5">@Model.Fiyatlar.Count kayit</p>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-[color:var(--line)] text-left text-xs font-medium uppercase tracking-wider text-[color:var(--muted)]">
+                    <th class="px-5 py-3">StkId</th>
+                    <th class="px-5 py-3">Satin Alma Sarti</th>
+                    <th class="px-5 py-3 text-right">Mekan</th>
+                    <th class="px-5 py-3 text-right">Birim Maliyet</th>
+                    <th class="px-5 py-3 text-right">Miktar</th>
+                    <th class="px-5 py-3 text-right">Toplam Tutar</th>
+                    <th class="px-5 py-3">Aciklama</th>
+                    <th class="px-5 py-3">Kayit Tarihi</th>
+                    <th class="px-5 py-3"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[color:var(--line)]">
+                @if (Model.Fiyatlar.Count == 0)
+                {
+                    <tr><td colspan="9" class="px-5 py-8 text-center text-[color:var(--muted)]">Fallback fiyat tanimlanmamis.</td></tr>
+                }
+                @foreach (var f in Model.Fiyatlar)
+                {
+                    <tr class="hover:bg-[color:var(--bg)] transition-colors">
+                        <td class="px-5 py-3">
+                            <a href="/Rapor/UrunDetay?stkId=@f.StkId" class="text-[color:var(--accent)] hover:underline font-medium">@Db.UrunAdi(f.StkId)</a>
+                        </td>
+                        <td class="px-5 py-3">@f.SatinalmaSarti</td>
+                        <td class="px-5 py-3 tabular-nums">@Db.MekanAdi(f.MekanId)</td>
+                        <td class="px-5 py-3 text-right tabular-nums">@f.BirimMaliyet.ToString("N4")</td>
+                        <td class="px-5 py-3 text-right tabular-nums">@f.Miktar.ToString("N2")</td>
+                        <td class="px-5 py-3 text-right tabular-nums font-medium">@f.ToplamTutar.ToString("N2")</td>
+                        <td class="px-5 py-3 text-[color:var(--muted)] max-w-xs truncate">@(f.Aciklama ?? "-")</td>
+                        <td class="px-5 py-3 tabular-nums text-[color:var(--muted)]">@f.KayitTarihi.ToString("dd.MM.yyyy")</td>
+                        <td class="px-5 py-3">
+                            <form method="post" asp-page-handler="Sil" class="inline">
+                                <input type="hidden" name="stkId" value="@f.StkId" />
+                                <input type="hidden" name="satinalmaSarti" value="@f.SatinalmaSarti" />
+                                <input type="hidden" name="mekanId" value="@f.MekanId" />
+                                <button type="submit"
+                                        onclick="return confirm('Bu fallback fiyati silmek istediginize emin misiniz?')"
+                                        class="rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors">
+                                    Sil
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

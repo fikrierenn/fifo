@@ -1,0 +1,162 @@
+@page
+@model App.Features.Rapor.DonemDegisimModel
+@{
+    ViewData["Title"] = Model.SeciliSnapshot != null ? $"Degisim — {Model.SeciliSnapshot.DonemStr}" : "Donem Degisim Raporu";
+}
+
+@if (Model.SeciliSnapshot != null)
+{
+    var snap = Model.SeciliSnapshot;
+    <section class="rounded-2xl border border-gray-200 bg-white p-8 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+        <a href="/Rapor/DonemDegisim" class="text-sm text-violet-600 hover:text-violet-700">&larr; Tum Snapshotlar</a>
+        <div class="mt-4 flex flex-wrap items-center gap-4">
+            <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">@snap.DonemStr Degisim Raporu</h1>
+            <a href="?SnapshotId=@snap.SnapshotId&handler=Export" class="rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-500 hover:bg-gray-50">CSV</a>
+        </div>
+        <div class="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <div class="rounded-xl border border-gray-100 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
+                <div class="text-xs text-gray-400">Snapshot Tarihi</div>
+                <div class="mt-1 font-medium text-gray-900 dark:text-white">@snap.SnapshotTarihi.ToString("dd.MM.yyyy HH:mm")</div>
+            </div>
+            <div class="rounded-xl border border-gray-100 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
+                <div class="text-xs text-gray-400">Katman / Kalan</div>
+                <div class="mt-1 font-medium text-gray-900 dark:text-white">@snap.ToplamKatman / @snap.ToplamKalanMiktar.ToString("N0")</div>
+            </div>
+            <div class="rounded-xl border border-gray-100 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
+                <div class="text-xs text-gray-400">Cikis Tutar</div>
+                <div class="mt-1 font-medium text-gray-900 dark:text-white">@snap.ToplamCikisTutar.ToString("N2") TL</div>
+            </div>
+            <div class="rounded-xl border border-gray-100 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
+                <div class="text-xs text-gray-400">Ort. Birim Maliyet</div>
+                <div class="mt-1 font-medium text-gray-900 dark:text-white">@snap.OrtBirimMaliyet.ToString("N4") TL</div>
+            </div>
+        </div>
+    </section>
+
+    @if (Model.Degisimler.Count > 0)
+    {
+    <section class="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+        <div class="text-lg font-semibold text-gray-900 dark:text-white">Urun Bazli Degisimler (@Model.Degisimler.Count urun)</div>
+        <div class="mt-4 overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="border-b border-gray-100 text-xs font-medium uppercase tracking-wider text-gray-400 dark:border-gray-700">
+                        <th class="pb-3 pr-4">Urun</th>
+                        <th class="pb-3 pr-4 text-right">Onceki Maliyet</th>
+                        <th class="pb-3 pr-4 text-right">Yeni Maliyet</th>
+                        <th class="pb-3 pr-4 text-right">Fark %</th>
+                        <th class="pb-3 pr-4 text-right">Onceki Kalan</th>
+                        <th class="pb-3 text-right">Yeni Kalan</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50 dark:divide-gray-700" data-paginate="50">
+                    @foreach (var d in Model.Degisimler)
+                    {
+                        var farkClass = d.MaliyetFarkYuzde > 1 ? "text-red-600" : d.MaliyetFarkYuzde < -1 ? "text-green-600" : "text-gray-400";
+                        <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/30">
+                            <td class="py-2.5 pr-4">
+                                <a href="/Rapor/UrunDetay?StkId=@d.StkId" class="font-medium text-violet-600 hover:text-violet-700">
+                                    @App.Lib.Db.UrunAdi(d.StkId)
+                                </a>
+                            </td>
+                            <td class="py-2.5 pr-4 text-right text-gray-500">@d.OncekiMaliyet.ToString("N4")</td>
+                            <td class="py-2.5 pr-4 text-right font-medium text-gray-900 dark:text-white">@d.MevcutMaliyet.ToString("N4")</td>
+                            <td class="py-2.5 pr-4 text-right font-medium @farkClass">@d.MaliyetFarkYuzde.ToString("N2")%</td>
+                            <td class="py-2.5 pr-4 text-right text-gray-500">@d.OncekiKalan.ToString("N0")</td>
+                            <td class="py-2.5 text-right text-gray-900 dark:text-white">@d.MevcutKalan.ToString("N0")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+        <div class="text-lg font-semibold text-gray-900 dark:text-white">En Cok Degisen Top 20</div>
+        <canvas id="degisimChart" class="mt-4" height="300"></canvas>
+    </section>
+
+    @section Scripts
+    {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+    <script>
+        const top20 = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            Model.Degisimler.Take(20).Select(d => new {
+                urun = App.Lib.Db.UrunAdi(d.StkId),
+                fark = Math.Round(d.MaliyetFarkYuzde, 2)
+            })));
+        new Chart(document.getElementById("degisimChart"), {
+            type: "bar",
+            data: {
+                labels: top20.map(d => d.urun.length > 25 ? d.urun.substring(0, 22) + "..." : d.urun),
+                datasets: [{
+                    label: "Maliyet Fark %",
+                    data: top20.map(d => d.fark),
+                    backgroundColor: top20.map(d => d.fark > 0 ? "rgba(239,68,68,0.7)" : "rgba(34,197,94,0.7)"),
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                indexAxis: "y",
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { x: { title: { display: true, text: "Fark %" } } }
+            }
+        });
+    </script>
+    }
+    }
+    else
+    {
+        <div class="mt-6 rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-400 dark:border-gray-700 dark:bg-gray-800">
+            Henuz degisim verisi yok. Bu snapshot alindigindan beri donem tekrar calistirilmamis olabilir.
+        </div>
+    }
+}
+else
+{
+    <section class="rounded-2xl border border-gray-200 bg-white p-8 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+        <div class="text-xs font-medium uppercase tracking-widest text-violet-600">Rapor</div>
+        <h1 class="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">Donem Degisim Raporu</h1>
+        <p class="mt-2 text-sm text-gray-500">Bir donem tekrar calistirildiginda alinan snapshot'lar ile mevcut durumun karsilastirilmasi.</p>
+    </section>
+
+    @if (Model.Snapshotlar.Count == 0)
+    {
+        <div class="mt-6 rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-400 dark:border-gray-700 dark:bg-gray-800">
+            Henuz snapshot alinmamis. Bir donemi tekrar calistirdiginizda otomatik snapshot alinir.
+        </div>
+    }
+    else
+    {
+    <section class="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="border-b border-gray-100 text-xs font-medium uppercase tracking-wider text-gray-400 dark:border-gray-700">
+                        <th class="pb-3 pr-4">Donem</th>
+                        <th class="pb-3 pr-4">Tarih</th>
+                        <th class="pb-3 pr-4">Katman</th>
+                        <th class="pb-3 pr-4">Kalan Miktar</th>
+                        <th class="pb-3 pr-4">Cikis Tutar</th>
+                        <th class="pb-3">Ort. Maliyet</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50 dark:divide-gray-700">
+                    @foreach (var s in Model.Snapshotlar)
+                    {
+                        <tr class="cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-700/30" onclick="location.href='/Rapor/DonemDegisim?SnapshotId=@s.SnapshotId'">
+                            <td class="py-3 pr-4 font-medium text-gray-900 dark:text-white">@s.DonemStr</td>
+                            <td class="py-3 pr-4 text-xs text-gray-500">@s.SnapshotTarihi.ToString("dd.MM.yyyy HH:mm")</td>
+                            <td class="py-3 pr-4">@s.ToplamKatman</td>
+                            <td class="py-3 pr-4">@s.ToplamKalanMiktar.ToString("N0")</td>
+                            <td class="py-3 pr-4">@s.ToplamCikisTutar.ToString("N2") TL</td>
+                            <td class="py-3">@s.OrtBirimMaliyet.ToString("N4") TL</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+    }
+}

@@ -1,0 +1,91 @@
+@page
+@model App.Features.Rapor.MekanKarsilastirmaModel
+@{
+    ViewData["Title"] = "Mekan Karsilastirma";
+
+    MekanSmmDto GetSmm(int mekanId) => Model.MekanSmmler.FirstOrDefault(m => m.MekanId == mekanId)
+        ?? new MekanSmmDto { MekanId = mekanId };
+}
+
+<!-- Breadcrumb -->
+<nav class="mb-4 text-xs text-[color:var(--muted)]">
+    <a href="/" class="hover:text-[color:var(--ink)]">Dashboard</a>
+    <span class="mx-1">/</span>
+    <span class="text-[color:var(--ink)] font-medium">Mekan Karsilastirma</span>
+</nav>
+
+<div class="mb-8">
+    <h1 class="text-2xl font-semibold">Mekan Karsilastirma</h1>
+    <p class="mt-1 text-sm text-[color:var(--muted)]">4 subenin maliyet ve stok karsilastirmasi.</p>
+</div>
+
+<!-- Ozet Kartlari -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+    @foreach (var kv in Db.Mekanlar)
+    {
+        var smm = GetSmm(kv.Key);
+        <div class="rounded-xl border border-[color:var(--line)] bg-white p-5">
+            <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-1">@kv.Value.Ad</div>
+            <div class="text-2xl font-bold text-[color:var(--ink)]">@smm.ToplamSmm.ToString("N0") <span class="text-sm font-normal">TL</span></div>
+            <div class="mt-1 text-xs text-[color:var(--muted)]">@smm.UrunSayisi urun &middot; @smm.ToplamMiktar.ToString("N0") adet</div>
+        </div>
+    }
+</div>
+
+<!-- SMM Bar Chart -->
+<div class="rounded-xl border border-[color:var(--line)] bg-white p-5 mb-8">
+    <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-3">Mekan Bazli SMM Karsilastirma</div>
+    <div class="h-64"><canvas id="chartMekanSmm"></canvas></div>
+</div>
+
+<!-- Stok Miktar Tablosu -->
+<div class="rounded-xl border border-[color:var(--line)] bg-white">
+    <div class="px-5 py-4 border-b border-[color:var(--line)]">
+        <h2 class="text-sm font-semibold">Urun Bazli Stok Miktarlari</h2>
+        <p class="text-xs text-[color:var(--muted)] mt-0.5">@Model.MekanStoklar.Count urun (son envanter)</p>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-[color:var(--line)] text-left text-xs font-medium uppercase tracking-wider text-[color:var(--muted)]">
+                    <th class="px-5 py-3">Urun</th>
+                    <th class="px-5 py-3 text-right">@Db.MekanAdi(1)</th>
+                    <th class="px-5 py-3 text-right">@Db.MekanAdi(12)</th>
+                    <th class="px-5 py-3 text-right">@Db.MekanAdi(4477)</th>
+                    <th class="px-5 py-3 text-right">@Db.MekanAdi(4478)</th>
+                    <th class="px-5 py-3 text-right">Toplam</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[color:var(--line)]">
+                @if (Model.MekanStoklar.Count == 0)
+                {
+                    <tr><td colspan="6" class="px-5 py-8 text-center text-[color:var(--muted)]">Stok verisi bulunamadi.</td></tr>
+                }
+                @foreach (var s in Model.MekanStoklar)
+                {
+                    var toplam = s.MerkezMiktar + s.Sube2Miktar + s.Sube3Miktar + s.Sube4Miktar;
+                    <tr class="hover:bg-[color:var(--bg)] transition-colors cursor-pointer @(Db.DevreDisiMi(s.StkId) ? "devre-disi" : "")" data-href="/Rapor/UrunDetay?stkId=@s.StkId" data-stkid="@s.StkId">
+                        <td class="px-5 py-3">
+                            <a href="/Rapor/UrunDetay?stkId=@s.StkId" class="text-[color:var(--accent)] hover:underline font-medium">@Db.UrunAdi(s.StkId)</a>
+                        </td>
+                        <td class="px-5 py-3 text-right tabular-nums">@s.MerkezMiktar.ToString("N2")</td>
+                        <td class="px-5 py-3 text-right tabular-nums">@s.Sube2Miktar.ToString("N2")</td>
+                        <td class="px-5 py-3 text-right tabular-nums">@s.Sube3Miktar.ToString("N2")</td>
+                        <td class="px-5 py-3 text-right tabular-nums">@s.Sube4Miktar.ToString("N2")</td>
+                        <td class="px-5 py-3 text-right tabular-nums font-medium">@toplam.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+@{
+    var chartLabels = string.Join(",", Db.Mekanlar.Values.Select(v => $"'{v.Ad}'"));
+    var chartData = string.Join(",", Db.Mekanlar.Keys.Select(k => GetSmm(k).ToplamSmm.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)));
+}
+BKM.bar('chartMekanSmm', [@Html.Raw(chartLabels)], [{ label: 'Toplam SMM (TL)', data: [@Html.Raw(chartData)] }]);
+</script>
+}

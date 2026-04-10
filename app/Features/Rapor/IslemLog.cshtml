@@ -1,0 +1,205 @@
+@page
+@model App.Features.Rapor.IslemLogModel
+@{
+    ViewData["Title"] = Model.SeciliIslem != null ? "Islem Detay" : "Islem Log";
+}
+
+@{
+    string DurumBadgeCss(string durum) => durum switch
+    {
+        "CALISIYOR" => "bg-blue-100 text-blue-700",
+        "TAMAMLANDI" => "bg-green-100 text-green-700",
+        "HATA" => "bg-red-100 text-red-700",
+        "KISMEN_HATA" => "bg-orange-100 text-orange-700",
+        _ => "bg-gray-100 text-gray-600"
+    };
+
+    string SureHesapla(DateTime baslangic, DateTime? bitis)
+    {
+        if (bitis == null) return "-";
+        var ts = bitis.Value - baslangic;
+        if (ts.TotalMinutes < 1) return $"{ts.TotalSeconds:N1}s";
+        if (ts.TotalHours < 1) return $"{ts.Minutes}dk {ts.Seconds}s";
+        return $"{(int)ts.TotalHours}sa {ts.Minutes}dk";
+    }
+}
+
+<div class="space-y-6">
+
+@if (Model.SeciliIslem != null)
+{
+    var islem = Model.SeciliIslem;
+    <div class="flex items-center gap-3">
+        <a href="/Rapor/IslemLog" class="text-sm text-blue-600 hover:underline">&larr; Listeye Don</a>
+        <h1 class="text-2xl font-semibold">Islem Detay</h1>
+    </div>
+
+    <div class="rounded-lg border border-gray-200 bg-white p-5 space-y-3">
+        <div class="flex items-center gap-3">
+            <h2 class="text-lg font-medium">@islem.IslemAdi</h2>
+            <span class="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium @DurumBadgeCss(islem.Durum)">@islem.Durum</span>
+        </div>
+        <div class="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+            <div>
+                <span class="text-gray-500">Baslangic</span>
+                <p class="font-mono">@islem.Baslangic.ToString("yyyy-MM-dd HH:mm:ss")</p>
+            </div>
+            <div>
+                <span class="text-gray-500">Bitis</span>
+                <p class="font-mono">@(islem.Bitis?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-")</p>
+            </div>
+            <div>
+                <span class="text-gray-500">Sure</span>
+                <p class="font-mono">@SureHesapla(islem.Baslangic, islem.Bitis)</p>
+            </div>
+            <div>
+                <span class="text-gray-500">IslemId</span>
+                <p class="font-mono text-xs break-all">@islem.IslemId</p>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+            <div>
+                <span class="text-gray-500">Envanter Tarihi</span>
+                <p>@(islem.EnvanterTarihi?.ToString("yyyy-MM-dd") ?? "-")</p>
+            </div>
+            <div>
+                <span class="text-gray-500">Mekan</span>
+                <p>@(islem.MekanId.HasValue ? Db.MekanAdi(islem.MekanId.Value) : "-")</p>
+            </div>
+            <div>
+                <span class="text-gray-500">Urun</span>
+                <p>
+                    @if (islem.StkId.HasValue)
+                    {
+                        <a href="/Rapor/UrunDetay?stkId=@islem.StkId" class="text-blue-600 hover:underline dark:text-blue-400">@Db.UrunAdi(islem.StkId.Value)</a>
+                    }
+                    else
+                    {
+                        <span>-</span>
+                    }
+                </p>
+            </div>
+            <div>
+                <span class="text-gray-500">Aciklama</span>
+                <p>@(islem.Aciklama ?? "-")</p>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.Adimlar.Count > 0)
+    {
+        <h3 class="text-lg font-medium">Adimlar</h3>
+        <div class="space-y-0">
+            @foreach (var adim in Model.Adimlar)
+            {
+                <div class="relative flex gap-4 pb-6 last:pb-0">
+                    <div class="flex flex-col items-center">
+                        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold
+                            @(adim.Durum == "TAMAMLANDI" ? "border-green-500 bg-green-50 text-green-700" :
+                              adim.Durum == "HATA" ? "border-red-500 bg-red-50 text-red-700" :
+                              adim.Durum == "CALISIYOR" ? "border-blue-500 bg-blue-50 text-blue-700" :
+                              "border-gray-300 bg-gray-50 text-gray-500")">
+                            @adim.SiraNo
+                        </div>
+                        @if (adim != Model.Adimlar.Last())
+                        {
+                            <div class="mt-1 w-px flex-1 bg-gray-200"></div>
+                        }
+                    </div>
+                    <div class="min-w-0 flex-1 pb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-medium text-sm">@adim.AdimAdi</span>
+                            <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium @DurumBadgeCss(adim.Durum)">@adim.Durum</span>
+                        </div>
+                        <div class="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                            <span>Kod: @adim.AdimKodu</span>
+                            <span>Baslangic: @(adim.Baslangic?.ToString("HH:mm:ss") ?? "-")</span>
+                            <span>Bitis: @(adim.Bitis?.ToString("HH:mm:ss") ?? "-")</span>
+                            <span>Sure: @(adim.Baslangic.HasValue ? SureHesapla(adim.Baslangic.Value, adim.Bitis) : "-")</span>
+                        </div>
+                        @if (!string.IsNullOrEmpty(adim.Mesaj))
+                        {
+                            <p class="mt-1 text-xs text-gray-600 bg-gray-50 rounded px-2 py-1 font-mono break-all">@adim.Mesaj</p>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="rounded-md border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+            Bu islem icin adim kaydedilmemis.
+        </div>
+    }
+
+    @* ÇALIŞIYOR durumundayken auto-refresh *@
+    @if (islem.Durum == "CALISIYOR")
+    {
+        <div class="flex items-center gap-2 text-xs text-blue-600">
+            <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+            <span>Islem devam ediyor, sayfa otomatik yenileniyor...</span>
+        </div>
+        <script>setTimeout(() => window.location.reload(), 2000);</script>
+    }
+}
+else
+{
+    <div>
+        <h1 class="text-2xl font-semibold">Islem Log</h1>
+        <p class="mt-1 text-sm text-[color:var(--muted)]">Maliyet hesaplama islemlerini takip edin.</p>
+    </div>
+
+    @if (Model.Islemler.Count == 0)
+    {
+        <div class="rounded-md border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+            Henuz islem kaydedilmemis.
+        </div>
+    }
+    else
+    {
+        <div class="overflow-x-auto rounded-lg border border-gray-200">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-2 text-left font-medium text-gray-600">Islem Adi</th>
+                        <th class="px-4 py-2 text-left font-medium text-gray-600">Baslangic</th>
+                        <th class="px-4 py-2 text-left font-medium text-gray-600">Bitis</th>
+                        <th class="px-4 py-2 text-left font-medium text-gray-600">Sure</th>
+                        <th class="px-4 py-2 text-center font-medium text-gray-600">Durum</th>
+                        <th class="px-4 py-2 text-right font-medium text-gray-600">Urun</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @foreach (var s in Model.Islemler)
+                    {
+                        <tr class="hover:bg-gray-50 cursor-pointer" data-href="/Rapor/IslemLog?islemId=@s.IslemId">
+                            <td class="px-4 py-2">
+                                <a href="/Rapor/IslemLog?islemId=@s.IslemId" class="text-blue-600 hover:underline font-medium">@s.IslemAdi</a>
+                            </td>
+                            <td class="px-4 py-2 font-mono text-xs">@s.Baslangic.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td class="px-4 py-2 font-mono text-xs">@(s.Bitis?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-")</td>
+                            <td class="px-4 py-2 font-mono text-xs">@SureHesapla(s.Baslangic, s.Bitis)</td>
+                            <td class="px-4 py-2 text-center">
+                                <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium @DurumBadgeCss(s.Durum)">@s.Durum</span>
+                            </td>
+                            <td class="px-4 py-2 text-right">
+                                @if (s.StkId.HasValue)
+                                {
+                                    <a href="/Rapor/UrunDetay?stkId=@s.StkId" class="text-blue-600 hover:underline dark:text-blue-400">@Db.UrunAdi(s.StkId.Value)</a>
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="text-xs text-gray-400">@Model.Islemler.Count islem &middot; Son 100</p>
+    }
+}
+
+</div>

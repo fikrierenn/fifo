@@ -1,0 +1,658 @@
+@page
+@model App.Features.Yardim.IndexModel
+@{
+    ViewData["Title"] = "Kullanim Kilavuzu";
+}
+
+<section class="rounded-2xl border border-gray-200 bg-white p-8 shadow-lg">
+    <div class="text-xs font-medium uppercase tracking-widest text-blue-600">YARDIM</div>
+    <h1 class="mt-3 text-3xl font-semibold leading-tight text-gray-900">BKM Maliyet &mdash; Kullanim Kilavuzu</h1>
+    <p class="mt-3 text-sm leading-6 text-gray-500">
+        FIFO ve Ortalama maliyet hesaplama sistemi rehberi. Tum islemleri adim adim ogrenmek icin asagidaki bolumleri inceleyin.
+    </p>
+</section>
+
+<!-- Bolum 1: Sistem Nedir? -->
+<details class="group mt-6 rounded-2xl border border-gray-200 bg-white shadow-lg" open>
+    <summary class="flex cursor-pointer items-center justify-between p-6 text-left select-none">
+        <div class="flex items-center gap-3">
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-100 text-blue-600">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
+            </span>
+            <div>
+                <div class="text-lg font-semibold text-gray-900">Sistem Nedir?</div>
+                <div class="text-xs text-gray-400">BKM Maliyet, FIFO, Ortalama Maliyet kavramlari</div>
+            </div>
+        </div>
+        <svg class="h-5 w-5 text-gray-400 transition group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+    </summary>
+    <div class="border-t border-gray-100 px-6 pb-6 pt-4 space-y-6">
+        <!-- BKM Maliyet Nedir -->
+        <div>
+            <h3 class="text-sm font-semibold text-gray-800 mb-2">BKM Maliyet Nedir?</h3>
+            <div class="space-y-2 text-sm leading-relaxed text-gray-600">
+                <p>
+                    BKM Maliyet, isletmenizin stok maliyetlerini dogru ve guncel hesaplamak icin gelistirilmis bir sistemdir.
+                    DerinSIS ERP sistemindeki stok hareketlerini (alis, satis, sarf, iade vb.) otomatik olarak ceker ve bu verileri
+                    kullanarak her urunun birim maliyetini hesaplar.
+                </p>
+                <p>
+                    Sistem iki farkli maliyet hesaplama yontemini destekler: <strong>FIFO (First In, First Out)</strong> ve
+                    <strong>Agirlikli Ortalama Maliyet</strong>. Her iki yontemi de esanli olarak calistirip sonuclarini
+                    karsilastirmaniza olanak tanir. Bu sayede isletmeniz icin en uygun maliyet yaklasimini belirleyebilirsiniz.
+                </p>
+                <p>
+                    Sistem 4 farkli mekan (sube) icin ayri ayri calisir:
+                </p>
+                <div class="flex flex-wrap gap-2 mt-1">
+                    <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">Merkez (1)</span>
+                    <span class="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Sube-12</span>
+                    <span class="rounded-full bg-purple-50 px-3 py-1 text-xs font-medium text-purple-700">Sube-4477</span>
+                    <span class="rounded-full bg-orange-50 px-3 py-1 text-xs font-medium text-orange-700">Sube-4478</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- FIFO Nedir -->
+        <div class="rounded-xl bg-blue-50/60 p-5">
+            <h3 class="text-sm font-semibold text-blue-800 mb-2">FIFO Nedir?</h3>
+            <div class="space-y-2 text-sm leading-relaxed text-blue-900/80">
+                <p>
+                    FIFO, <strong>"First In, First Out" (Ilk Giren, Ilk Cikar)</strong> anlamina gelir. Bir urun satildiginda veya
+                    sarf edildiginde, <em>en eski alistan baslayarak</em> maliyet hesaplanir. Yani ilk ne fiyattan aldiysaniz, satista
+                    o fiyat once kullanilir.
+                </p>
+                <p class="font-medium text-blue-800">Ornek:</p>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr class="border-b border-blue-200">
+                                <th class="py-2 pr-4 text-left font-medium">Islem</th>
+                                <th class="py-2 pr-4 text-right font-medium">Adet</th>
+                                <th class="py-2 pr-4 text-right font-medium">Birim Fiyat</th>
+                                <th class="py-2 text-right font-medium">Toplam</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-blue-100">
+                                <td class="py-1.5 pr-4">1. Alis (Katman 1)</td>
+                                <td class="py-1.5 pr-4 text-right">100</td>
+                                <td class="py-1.5 pr-4 text-right">10,00 TL</td>
+                                <td class="py-1.5 text-right">1.000 TL</td>
+                            </tr>
+                            <tr class="border-b border-blue-100">
+                                <td class="py-1.5 pr-4">2. Alis (Katman 2)</td>
+                                <td class="py-1.5 pr-4 text-right">50</td>
+                                <td class="py-1.5 pr-4 text-right">15,00 TL</td>
+                                <td class="py-1.5 text-right">750 TL</td>
+                            </tr>
+                            <tr class="bg-blue-100/50">
+                                <td class="py-1.5 pr-4 font-medium">Satis (120 adet)</td>
+                                <td class="py-1.5 pr-4 text-right">120</td>
+                                <td class="py-1.5 pr-4 text-right">&mdash;</td>
+                                <td class="py-1.5 text-right font-bold">1.300 TL</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-xs text-blue-700 mt-2">
+                    120 adet satildiginda: ilk 100 adet Katman 1'den (10 TL x 100 = 1.000 TL), kalan 20 adet Katman 2'den
+                    (15 TL x 20 = 300 TL) dusulur. Toplam maliyet: <strong>1.300 TL</strong>.
+                </p>
+                <div class="mt-3 space-y-1 text-xs">
+                    <p><strong>Katman</strong> = Her alis islemi bir katman olusturur. Katmanda miktar ve birim fiyat bilgisi bulunur.</p>
+                    <p><strong>Cikis</strong> = Satis veya sarf islemi. En eski katmandan baslayarak miktar dusulur.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ortalama Maliyet Nedir -->
+        <div class="rounded-xl bg-green-50/60 p-5">
+            <h3 class="text-sm font-semibold text-green-800 mb-2">Ortalama Maliyet Nedir?</h3>
+            <div class="space-y-2 text-sm leading-relaxed text-green-900/80">
+                <p>
+                    Agirlikli ortalama maliyet yonteminde, tum alislarin <strong>toplam tutari</strong> toplam miktara bolunur.
+                    Her alista birim fiyat yeniden hesaplanir.
+                </p>
+                <p class="font-medium text-green-800">Ornek:</p>
+                <div class="bg-white/50 rounded-lg p-3 text-xs font-mono">
+                    100 adet x 10 TL = 1.000 TL<br/>
+                    &nbsp;50 adet x 15 TL = &nbsp;&nbsp;750 TL<br/>
+                    <span class="border-t border-green-300 inline-block w-full my-1"></span>
+                    150 adet &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= 1.750 TL<br/>
+                    <strong>Birim maliyet = 1.750 / 150 = 11,67 TL</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Neden ikisi de lazim -->
+        <div class="rounded-xl bg-gray-50 p-5">
+            <h3 class="text-sm font-semibold text-gray-800 mb-2">Neden Ikisi de Lazim?</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div class="rounded-lg border border-blue-200 bg-white p-4">
+                    <div class="font-semibold text-blue-700 mb-1">FIFO</div>
+                    <ul class="space-y-1 text-xs text-gray-600">
+                        <li>Gercek maliyeti yansitir</li>
+                        <li>Vergi avantaji saglar (enflasyonlu ortamda)</li>
+                        <li>Muhasebe standartlarina uygun</li>
+                        <li>Urun bazinda detayli maliyet takibi</li>
+                    </ul>
+                </div>
+                <div class="rounded-lg border border-green-200 bg-white p-4">
+                    <div class="font-semibold text-green-700 mb-1">Ortalama Maliyet</div>
+                    <ul class="space-y-1 text-xs text-gray-600">
+                        <li>Hesaplamasi basit ve hizli</li>
+                        <li>Fiyat dalgalanmalarini yumusatir</li>
+                        <li>Hizli karar verme icin ideal</li>
+                        <li>Genel maliyet trendi gosterir</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</details>
+
+<!-- Bolum 2: Ilk Kurulum -->
+<details class="group mt-4 rounded-2xl border border-gray-200 bg-white shadow-lg">
+    <summary class="flex cursor-pointer items-center justify-between p-6 text-left select-none">
+        <div class="flex items-center gap-3">
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-600">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" /></svg>
+            </span>
+            <div>
+                <div class="text-lg font-semibold text-gray-900">Ilk Kurulum (Adim Adim)</div>
+                <div class="text-xs text-gray-400">Snapshot, Acilis Maliyetlendirme, Ilk Hesaplama</div>
+            </div>
+        </div>
+        <svg class="h-5 w-5 text-gray-400 transition group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+    </summary>
+    <div class="border-t border-gray-100 px-6 pb-6 pt-4 space-y-6">
+
+        <!-- Adim 1: Envanter Snapshot -->
+        <div class="rounded-xl border border-emerald-200 bg-emerald-50/40 p-5">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="grid h-7 w-7 place-items-center rounded-full bg-emerald-600 text-xs font-bold text-white">1</span>
+                <h3 class="text-sm font-semibold text-emerald-800">Envanter Snapshot</h3>
+            </div>
+            <div class="space-y-2 text-sm leading-relaxed text-gray-600">
+                <p>
+                    <strong>Nedir:</strong> DerinSIS ERP'deki stok hareketlerini tarayarak, belirli bir tarihteki stok miktarlarini
+                    <code class="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-mono">FifoAcilisEnvanter</code> tablosuna kaydeder.
+                    Sistem "bu tarihte elde ne kadar stok vardi?" sorusunu yanitlar.
+                </p>
+                <p>
+                    <strong>Ne zaman:</strong> Ilk kurulumda bir kez yapilir. Genellikle yil sonu (31.12) secilir. Sonraki aylarda
+                    tekrar yapilmaz &mdash; devir mekanizmasi otomatik calisir.
+                </p>
+                <p>
+                    <strong>Nasil:</strong>
+                </p>
+                <ol class="list-decimal list-inside space-y-1 text-xs ml-2">
+                    <li>Sol menudan <strong>"Kurulum Sihirbazi"</strong> sayfasina gidin</li>
+                    <li>Envanter tarihi secin (ornegin 31.12.2025)</li>
+                    <li><strong>"Snapshot Olustur"</strong> butonuna basin</li>
+                    <li>Islem arka planda calisir &mdash; ilerlemeyi ekranda takip edin</li>
+                </ol>
+                <div class="mt-2 rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
+                    <strong>Dikkat:</strong> ERP'den yaklasik 500.000 kayit cekilir. 4 mekan icin toplam 30-60 saniye surebilir.
+                    Her mekan arasi iptal edilebilir. Snapshot zaten varsa tekrar cekilmez (atlenir).
+                </div>
+                <div class="mt-2 rounded-lg bg-gray-100 p-3 text-xs font-mono text-gray-700 overflow-x-auto">
+                    INSERT INTO FifoAcilisEnvanter (...)<br/>
+                    SELECT ... FROM DerinSISBkm.dbo.irsHrk<br/>
+                    WHERE ehMekan = @@MekanId AND ehTrhS &lt;= @@EnvanterTarihi<br/>
+                    GROUP BY ehMekan, ehstkID<br/>
+                    HAVING SUM(...) &gt; 0
+                </div>
+            </div>
+        </div>
+
+        <!-- Adim 2: Acilis Maliyetlendirme -->
+        <div class="rounded-xl border border-emerald-200 bg-emerald-50/40 p-5">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="grid h-7 w-7 place-items-center rounded-full bg-emerald-600 text-xs font-bold text-white">2</span>
+                <h3 class="text-sm font-semibold text-emerald-800">Acilis Maliyetlendirme</h3>
+            </div>
+            <div class="space-y-2 text-sm leading-relaxed text-gray-600">
+                <p>
+                    <strong>Nedir:</strong> Snapshot'taki her urun icin geriye donuk faturalari tarar ve FIFO katmanlari olusturur.
+                    "Ters fatura aging" yontemiyle en yeni faturadan baslayarak, eldeki stok miktarini karsilayacak kadar alis
+                    faturasi bulur.
+                </p>
+                <p>
+                    <strong>Mantik:</strong> Her urun icin su islem yapilir:
+                </p>
+                <ol class="list-decimal list-inside space-y-1 text-xs ml-2">
+                    <li>Urunun snapshot'taki stok miktari alinir</li>
+                    <li>Envanter tarihinden geriye dogru alis faturalari taranir</li>
+                    <li>Her fatura bir <strong>katman</strong> olusturur (miktar + birim fiyat)</li>
+                    <li>Fatura bulunamazsa <strong>sentetik katman</strong> (fallback fiyat) olusturulur</li>
+                </ol>
+                <p>
+                    <strong>SP:</strong> <code class="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-mono">sp_Fifo_AcilisCalistir</code>
+                    &mdash; urun bazli calisir, 200'luk batch'lerle cagirilir.
+                </p>
+                <div class="mt-2 rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
+                    <strong>Dikkat:</strong> Urun sayisina bagli olarak uzun surebilir (binlerce urun = dakikalar).
+                    Her batch arasi iptal edilebilir. Kismi hatalar olabilir &mdash; bazi urunlerin faturasi bulunamayabilir.
+                </div>
+            </div>
+        </div>
+
+        <!-- Adim 3: Ilk Ay Hesaplamasi -->
+        <div class="rounded-xl border border-emerald-200 bg-emerald-50/40 p-5">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="grid h-7 w-7 place-items-center rounded-full bg-emerald-600 text-xs font-bold text-white">3</span>
+                <h3 class="text-sm font-semibold text-emerald-800">Ilk Ay Hesaplamasi</h3>
+            </div>
+            <div class="space-y-2 text-sm leading-relaxed text-gray-600">
+                <p>
+                    <strong>Nedir:</strong> Acilis katmanlari uzerine, ilk ayin alis ve cikis hareketlerini isler.
+                    Yeni alislar yeni katman olusturur, satislar mevcut katmanlardan FIFO sirasiyla dusar.
+                </p>
+                <p>
+                    <strong>SP:</strong> <code class="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-mono">sp_Fifo_AylikRutinFull</code>
+                    &mdash; tek SP ile devir + alis katman + FIFO cikis + sentetik katman islemlerinin tumunu yapar.
+                </p>
+                <p>
+                    <strong>Ornek:</strong> Snapshot 31.12.2025 ise, ilk hesaplama Ocak 2026 (Yil: 2026, Ay: 1) icin yapilir.
+                </p>
+                <div class="mt-2 rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-800">
+                    <strong>Ipucu:</strong> Ilk hesaplamadan sonra, sonraki aylar icin "Batch Baslat" sayfasini kullanin.
+                    Kurulum Sihirbazi sadece ilk kurulum icindir.
+                </div>
+            </div>
+        </div>
+    </div>
+</details>
+
+<!-- Bolum 3: Aylik Rutin Islemler -->
+<details class="group mt-4 rounded-2xl border border-gray-200 bg-white shadow-lg">
+    <summary class="flex cursor-pointer items-center justify-between p-6 text-left select-none">
+        <div class="flex items-center gap-3">
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-violet-100 text-violet-600">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
+            </span>
+            <div>
+                <div class="text-lg font-semibold text-gray-900">Aylik Rutin Islemler</div>
+                <div class="text-xs text-gray-400">Her ay tekrarlanan islemler ve otomasyon</div>
+            </div>
+        </div>
+        <svg class="h-5 w-5 text-gray-400 transition group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+    </summary>
+    <div class="border-t border-gray-100 px-6 pb-6 pt-4 space-y-4">
+        <p class="text-sm text-gray-600">Her ayin basinda (veya onceki ay kapandiginda) asagidaki adimlari sirayla uygulayin:</p>
+
+        <div class="space-y-3">
+            <div class="flex items-start gap-3 rounded-lg border border-gray-100 p-4">
+                <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-violet-600 text-xs font-bold text-white">1</span>
+                <div>
+                    <div class="text-sm font-semibold text-gray-800">Batch Baslat</div>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                        Sol menudan <strong>"Batch Baslat"</strong> sayfasina gidin. Yil ve ay secip "Baslat" butonuna basin.
+                        Sistem hareketli urunleri tespit eder, 500'luk batch'ler halinde FIFO hesaplar.
+                        Ilerleme canli olarak goruntulenir.
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-start gap-3 rounded-lg border border-gray-100 p-4">
+                <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-violet-600 text-xs font-bold text-white">2</span>
+                <div>
+                    <div class="text-sm font-semibold text-gray-800">Hatali Urunleri Kontrol Et</div>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                        Batch bittikten sonra <strong>"Hatali Retry"</strong> sayfasini kontrol edin. Bazi urunler fatura
+                        eksikligi veya veri tutarsizligi nedeniyle hata verebilir. Bu urunleri tek tek veya toplu olarak
+                        tekrar deneyebilirsiniz.
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-start gap-3 rounded-lg border border-gray-100 p-4">
+                <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-violet-600 text-xs font-bold text-white">3</span>
+                <div>
+                    <div class="text-sm font-semibold text-gray-800">Ortalama Maliyet Hesapla</div>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                        <strong>"Ay Sonu"</strong> sayfasindan ortalama maliyet hesaplamasini calistirin. Batch sirasinda
+                        "Ortalama Hesapla" secenegi isaretliyse bu adim otomatik yapilmistir.
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-start gap-3 rounded-lg border border-gray-100 p-4">
+                <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-violet-600 text-xs font-bold text-white">4</span>
+                <div>
+                    <div class="text-sm font-semibold text-gray-800">Raporlari Kontrol Et</div>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                        Dashboard, Karsilastirma ve Sorunlu Stoklar raporlarini inceleyin. Anormal degerler varsa
+                        detay raporlarindan arastirin.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="rounded-lg bg-violet-50 border border-violet-200 p-4 mt-4">
+            <div class="flex items-center gap-2 text-sm font-semibold text-violet-800 mb-1">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Hangfire Otomasyon
+            </div>
+            <p class="text-xs text-violet-700">
+                Hangfire yapilandirmasi mevcutsa, her ayin 1'i saat 01:00'de aylik FIFO hesaplama otomatik calisir.
+                Hangfire Panel'den zamanlama ve gecmis calismalari gorebilirsiniz. Otomatik calisma basarisiz olursa
+                manuel olarak "Batch Baslat" ile tekrarlayabilirsiniz.
+            </p>
+        </div>
+    </div>
+</details>
+
+<!-- Bolum 4: Raporlar Rehberi -->
+<details class="group mt-4 rounded-2xl border border-gray-200 bg-white shadow-lg">
+    <summary class="flex cursor-pointer items-center justify-between p-6 text-left select-none">
+        <div class="flex items-center gap-3">
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amber-100 text-amber-600">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
+            </span>
+            <div>
+                <div class="text-lg font-semibold text-gray-900">Raporlar Rehberi</div>
+                <div class="text-xs text-gray-400">Her rapor sayfasinin aciklamasi</div>
+            </div>
+        </div>
+        <svg class="h-5 w-5 text-gray-400 transition group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+    </summary>
+    <div class="border-t border-gray-100 px-6 pb-6 pt-4">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-200">
+                        <th class="py-3 pr-4 text-left font-semibold text-gray-700">Rapor</th>
+                        <th class="py-3 pr-4 text-left font-semibold text-gray-700">Aciklama</th>
+                        <th class="py-3 text-left font-semibold text-gray-700">Ne Zaman Kullanilir</th>
+                    </tr>
+                </thead>
+                <tbody class="text-xs text-gray-600">
+                    <tr class="border-b border-gray-100">
+                        <td class="py-2.5 pr-4 font-medium text-gray-800">Dashboard</td>
+                        <td class="py-2.5 pr-4">Genel ozet &mdash; katman sayisi, stok degeri, sorunlu stoklar, son islemler</td>
+                        <td class="py-2.5">Sisteme ilk giriste, genel duruma bakmak icin</td>
+                    </tr>
+                    <tr class="border-b border-gray-100">
+                        <td class="py-2.5 pr-4 font-medium text-gray-800">Karsilastirma</td>
+                        <td class="py-2.5 pr-4">FIFO vs Ortalama birim maliyet farki, urun bazinda</td>
+                        <td class="py-2.5">Iki yontem arasindaki farklari analiz etmek icin</td>
+                    </tr>
+                    <tr class="border-b border-gray-100">
+                        <td class="py-2.5 pr-4 font-medium text-gray-800">Cikis Raporu</td>
+                        <td class="py-2.5 pr-4">Tum FIFO cikislari (satis/sarf), filtrelenebilir</td>
+                        <td class="py-2.5">Belirli donem veya urun icin maliyet detayi</td>
+                    </tr>
+                    <tr class="border-b border-gray-100">
+                        <td class="py-2.5 pr-4 font-medium text-gray-800">Sorunlu Stoklar</td>
+                        <td class="py-2.5 pr-4">Fiyatsiz, negatif stoklu veya tutarsiz urunler</td>
+                        <td class="py-2.5">Hesaplama sonrasi veri kalitesini kontrol icin</td>
+                    </tr>
+                    <tr class="border-b border-gray-100">
+                        <td class="py-2.5 pr-4 font-medium text-gray-800">Islem Log</td>
+                        <td class="py-2.5 pr-4">Tum maliyet hesaplama islemlerinin gecmisi ve adimlari</td>
+                        <td class="py-2.5">Bir islemin ne zaman, nasil calistigini incelemek icin</td>
+                    </tr>
+                    <tr class="border-b border-gray-100">
+                        <td class="py-2.5 pr-4 font-medium text-gray-800">Batch Detay</td>
+                        <td class="py-2.5 pr-4">Batch calistirma detaylari, sure, hata sayisi</td>
+                        <td class="py-2.5">Batch performansini ve hatalarini incelemek icin</td>
+                    </tr>
+                    <tr class="border-b border-gray-100">
+                        <td class="py-2.5 pr-4 font-medium text-gray-800">Mekan Karsilastirma</td>
+                        <td class="py-2.5 pr-4">4 subenin maliyet farklari, mekan bazinda ozet</td>
+                        <td class="py-2.5">Subeler arasi maliyet farkini gormek icin</td>
+                    </tr>
+                    <tr class="border-b border-gray-100">
+                        <td class="py-2.5 pr-4 font-medium text-gray-800">Trend</td>
+                        <td class="py-2.5 pr-4">3/6/12 aylik maliyet trendi, grafik ile</td>
+                        <td class="py-2.5">Maliyet degisimini zaman icinde izlemek icin</td>
+                    </tr>
+                    <tr class="border-b border-gray-100">
+                        <td class="py-2.5 pr-4 font-medium text-gray-800">Brut Kar</td>
+                        <td class="py-2.5 pr-4">Satis geliri - SMM (Satilan Malin Maliyeti)</td>
+                        <td class="py-2.5">Karlilik analizi icin</td>
+                    </tr>
+                    <tr>
+                        <td class="py-2.5 pr-4 font-medium text-gray-800">Hareketli Urunler</td>
+                        <td class="py-2.5 pr-4">Donemde hareketi olan urun listesi</td>
+                        <td class="py-2.5">Hangi urunlerin aktif oldugunu gormek icin</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</details>
+
+<!-- Bolum 5: Kavramlar Sozlugu -->
+<details class="group mt-4 rounded-2xl border border-gray-200 bg-white shadow-lg">
+    <summary class="flex cursor-pointer items-center justify-between p-6 text-left select-none">
+        <div class="flex items-center gap-3">
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-cyan-100 text-cyan-600">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>
+            </span>
+            <div>
+                <div class="text-lg font-semibold text-gray-900">Kavramlar Sozlugu</div>
+                <div class="text-xs text-gray-400">Sistemdeki teknik terimlerin aciklamalari</div>
+            </div>
+        </div>
+        <svg class="h-5 w-5 text-gray-400 transition group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+    </summary>
+    <div class="border-t border-gray-100 px-6 pb-6 pt-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="rounded-lg border border-gray-100 p-3">
+                <div class="text-sm font-semibold text-gray-800">Katman</div>
+                <p class="text-xs text-gray-500 mt-0.5">Her alis islemi bir katman olusturur. Katman turleri: <strong>ALIS</strong> (gercek fatura), <strong>ACILIS</strong> (acilis envanter), <strong>SENTETIK</strong> (fallback fiyatli yapay katman), <strong>DEVIR</strong> (onceki aydan kalan).</p>
+            </div>
+            <div class="rounded-lg border border-gray-100 p-3">
+                <div class="text-sm font-semibold text-gray-800">SMM (Satilan Malin Maliyeti)</div>
+                <p class="text-xs text-gray-500 mt-0.5">FIFO yontemiyle hesaplanan cikis tutari. Satis gelirinden dusulerek brut kar bulunur.</p>
+            </div>
+            <div class="rounded-lg border border-gray-100 p-3">
+                <div class="text-sm font-semibold text-gray-800">Sentetik Katman</div>
+                <p class="text-xs text-gray-500 mt-0.5">Gercek alis faturasi bulunamayan urunler icin fallback fiyattan olusturulan yapay katman. Bu urunler "Sorunlu Stoklar" raporunda listelenir.</p>
+            </div>
+            <div class="rounded-lg border border-gray-100 p-3">
+                <div class="text-sm font-semibold text-gray-800">Fallback Fiyat</div>
+                <p class="text-xs text-gray-500 mt-0.5">Gercek fatura yoksa kullanilan varsayilan birim fiyat. "Ayarlar &gt; Fallback Fiyat" sayfasindan urun bazinda tanimlanir.</p>
+            </div>
+            <div class="rounded-lg border border-gray-100 p-3">
+                <div class="text-sm font-semibold text-gray-800">Batch</div>
+                <p class="text-xs text-gray-500 mt-0.5">500 urunluk gruplar halinde toplu hesaplama. Sistemi kilitlememek ve ilerleme takibi icin kullanilir. Her batch bagimsiz olarak calisir.</p>
+            </div>
+            <div class="rounded-lg border border-gray-100 p-3">
+                <div class="text-sm font-semibold text-gray-800">TVP (Table-Valued Parameter)</div>
+                <p class="text-xs text-gray-500 mt-0.5">SQL Server'a toplu veri gondermek icin kullanilan yontem. Batch'teki 500 StkId tek seferde SP'ye gonderilir.</p>
+            </div>
+            <div class="rounded-lg border border-gray-100 p-3">
+                <div class="text-sm font-semibold text-gray-800">Mekan</div>
+                <p class="text-xs text-gray-500 mt-0.5">Sube anlaminda kullanilir. Degerler: <strong>1</strong>=Merkez, <strong>12</strong>=Sube-12, <strong>4477</strong>=Sube-4477, <strong>4478</strong>=Sube-4478.</p>
+            </div>
+            <div class="rounded-lg border border-gray-100 p-3">
+                <div class="text-sm font-semibold text-gray-800">Envanter Tarihi</div>
+                <p class="text-xs text-gray-500 mt-0.5">Stok sayim tarihi. Genellikle 31 Aralik secilir. Sistemin baslangic noktasidir &mdash; bu tarihten itibaren FIFO hesaplama baslar.</p>
+            </div>
+            <div class="rounded-lg border border-gray-100 p-3">
+                <div class="text-sm font-semibold text-gray-800">Donem (YilAy)</div>
+                <p class="text-xs text-gray-500 mt-0.5">Yil-Ay bazinda hesaplama periyodu. Ornegin <strong>202601</strong> = Ocak 2026. Her donem icin ayri FIFO ve ortalama maliyet hesaplanir.</p>
+            </div>
+            <div class="rounded-lg border border-gray-100 p-3">
+                <div class="text-sm font-semibold text-gray-800">StkId</div>
+                <p class="text-xs text-gray-500 mt-0.5">DerinSIS ERP'deki urun kimlik numarasi. Tum tablolarda ortak anahtar olarak kullanilir.</p>
+            </div>
+        </div>
+    </div>
+</details>
+
+<!-- Bolum 6: Sorun Giderme (FAQ) -->
+<details class="group mt-4 rounded-2xl border border-gray-200 bg-white shadow-lg">
+    <summary class="flex cursor-pointer items-center justify-between p-6 text-left select-none">
+        <div class="flex items-center gap-3">
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-red-100 text-red-600">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+            </span>
+            <div>
+                <div class="text-lg font-semibold text-gray-900">Sorun Giderme (FAQ)</div>
+                <div class="text-xs text-gray-400">Sik karsilasilan sorunlar ve cozumleri</div>
+            </div>
+        </div>
+        <svg class="h-5 w-5 text-gray-400 transition group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+    </summary>
+    <div class="border-t border-gray-100 px-6 pb-6 pt-4 space-y-3">
+
+        <details class="rounded-lg border border-gray-100">
+            <summary class="flex cursor-pointer items-center gap-2 p-3 text-sm font-medium text-gray-700 hover:bg-gray-50 select-none">
+                <svg class="h-4 w-4 shrink-0 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                "Urunun maliyeti 0 gorunuyor"
+            </summary>
+            <div class="border-t border-gray-100 p-3 text-xs text-gray-600">
+                <p><strong>Neden:</strong> Urun icin fallback fiyat tanimlanmamis ve gercek alis faturasi bulunamamistr.</p>
+                <p class="mt-1"><strong>Cozum:</strong> Sol menudan <strong>Ayarlar &gt; Fallback Fiyat</strong> sayfasina gidin. Ilgili StkId icin bir fallback birim fiyat tanimlayin. Sonra urun icin hesaplamayi tekrar calistirin.</p>
+            </div>
+        </details>
+
+        <details class="rounded-lg border border-gray-100">
+            <summary class="flex cursor-pointer items-center gap-2 p-3 text-sm font-medium text-gray-700 hover:bg-gray-50 select-none">
+                <svg class="h-4 w-4 shrink-0 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                "Batch calisirken hata verdi"
+            </summary>
+            <div class="border-t border-gray-100 p-3 text-xs text-gray-600">
+                <p><strong>Neden:</strong> Bazi urunlerde veri tutarsizligi veya fatura eksikligi olabilir. Bu tum batch'i durdurmaz &mdash; sadece o urunler hata alir.</p>
+                <p class="mt-1"><strong>Cozum:</strong> <strong>Hatali Retry</strong> sayfasindan hatali urunleri goruntuleyin. Tek tek veya toplu olarak tekrar deneyebilirsiniz. Hata devam ederse "Batch Detay" raporundan hata mesajini inceleyin.</p>
+            </div>
+        </details>
+
+        <details class="rounded-lg border border-gray-100">
+            <summary class="flex cursor-pointer items-center gap-2 p-3 text-sm font-medium text-gray-700 hover:bg-gray-50 select-none">
+                <svg class="h-4 w-4 shrink-0 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                "Snapshot cok uzun suruyor"
+            </summary>
+            <div class="border-t border-gray-100 p-3 text-xs text-gray-600">
+                <p><strong>Neden:</strong> ERP veritabanindan buyuk miktarda veri cekiliyordur. Ozellikle merkez mekan (1) en fazla kaydı icerir.</p>
+                <p class="mt-1"><strong>Cozum:</strong> Snapshot mekan bazli parcalanmis calisir. Her mekan arasi iptal edebilirsiniz. Iptal ettikten sonra tekrar baslatabilirsiniz &mdash; tamamlanan mekanlar atlanir.</p>
+            </div>
+        </details>
+
+        <details class="rounded-lg border border-gray-100">
+            <summary class="flex cursor-pointer items-center gap-2 p-3 text-sm font-medium text-gray-700 hover:bg-gray-50 select-none">
+                <svg class="h-4 w-4 shrink-0 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                "Negatif stok uyarisi"
+            </summary>
+            <div class="border-t border-gray-100 p-3 text-xs text-gray-600">
+                <p><strong>Neden:</strong> ERP'deki stok hareketlerinde tutarsizlik vardir. Cikis miktari, giris miktarindan fazla olmus olabilir.</p>
+                <p class="mt-1"><strong>Cozum:</strong> <strong>Sorunlu Stoklar</strong> raporundan ilgili StkId'yi bulun ve ERP'de stok hareketlerini kontrol edin. Duzeltme yapildiktan sonra o urun icin hesaplamayi tekrar calistirabilirsiniz.</p>
+            </div>
+        </details>
+
+        <details class="rounded-lg border border-gray-100">
+            <summary class="flex cursor-pointer items-center gap-2 p-3 text-sm font-medium text-gray-700 hover:bg-gray-50 select-none">
+                <svg class="h-4 w-4 shrink-0 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                "FIFO ve Ortalama maliyet cok farkli"
+            </summary>
+            <div class="border-t border-gray-100 p-3 text-xs text-gray-600">
+                <p><strong>Neden:</strong> Bu normaldir. FIFO son alislara duyarlidir &mdash; son alis fiyati cok yukseldiyse FIFO maliyeti de yukselir. Ortalama ise tum alislari dengeler.</p>
+                <p class="mt-1"><strong>Cozum:</strong> <strong>Karsilastirma</strong> raporundan fark oranini inceleyin. %20'den fazla fark varsa urunun alis gecmisini kontrol edin. Buyuk farklar genellikle nadir alinan ve fiyati cok degisen urunlerde gorulur.</p>
+            </div>
+        </details>
+
+    </div>
+</details>
+
+<!-- Bolum 7: Teknik Bilgi -->
+<details class="group mt-4 mb-8 rounded-2xl border border-gray-200 bg-white shadow-lg">
+    <summary class="flex cursor-pointer items-center justify-between p-6 text-left select-none">
+        <div class="flex items-center gap-3">
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gray-200 text-gray-600">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" /></svg>
+            </span>
+            <div>
+                <div class="text-lg font-semibold text-gray-900">Teknik Bilgi (Gelistiriciler Icin)</div>
+                <div class="text-xs text-gray-400">Veritabani, SP'ler, tablolar, mimari</div>
+            </div>
+        </div>
+        <svg class="h-5 w-5 text-gray-400 transition group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+    </summary>
+    <div class="border-t border-gray-100 px-6 pb-6 pt-4 space-y-5">
+
+        <!-- Veritabani -->
+        <div>
+            <h3 class="text-sm font-semibold text-gray-800 mb-2">Veritabani</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div class="rounded bg-gray-50 p-2"><strong>DB:</strong> BKMMaliyet</div>
+                <div class="rounded bg-gray-50 p-2"><strong>Motor:</strong> SQL Server 2019</div>
+                <div class="rounded bg-gray-50 p-2"><strong>Kaynak DB:</strong> DerinSISBkm (cross-database)</div>
+                <div class="rounded bg-gray-50 p-2"><strong>Sunucu:</strong> 192.168.40.201 (VPN gerekli)</div>
+            </div>
+        </div>
+
+        <!-- SP Listesi -->
+        <div>
+            <h3 class="text-sm font-semibold text-gray-800 mb-2">Stored Procedure'ler</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="border-b border-gray-200">
+                            <th class="py-2 pr-4 text-left font-medium text-gray-700">SP Adi</th>
+                            <th class="py-2 text-left font-medium text-gray-700">Aciklama</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-gray-600 font-mono">
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4">sp_Fifo_AcilisMaliyetlendir</td><td class="py-1.5 font-sans">Acilis maliyetlendirme</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4">sp_Fifo_AlisKatmanEkle</td><td class="py-1.5 font-sans">Alis katman ekleme</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4">sp_Fifo_CikisMaliyetle</td><td class="py-1.5 font-sans">FIFO cikis hesaplama</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4">sp_Fifo_Calistir</td><td class="py-1.5 font-sans">Tek urun icin tam FIFO hesaplama</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4">sp_Fifo_AcilisCalistir</td><td class="py-1.5 font-sans">Acilis envanter maliyetlendirme</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4">sp_Fifo_AylikCalistir</td><td class="py-1.5 font-sans">Aylik FIFO hesaplama (tek urun)</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4">sp_Fifo_AylikCalistirBatch</td><td class="py-1.5 font-sans">Aylik FIFO hesaplama (TVP ile toplu)</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4">sp_Fifo_BatchRunBaslat</td><td class="py-1.5 font-sans">Batch run kaydi olustur</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4">sp_Fifo_BatchRunBitir</td><td class="py-1.5 font-sans">Batch run kaydini kapat</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4">sp_Fifo_HareketliUrunListesi</td><td class="py-1.5 font-sans">Donemde hareketi olan urunler</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4">sp_Fifo_SentetikKatmanOlustur</td><td class="py-1.5 font-sans">Fallback fiyatli sentetik katman</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4">sp_Fifo_AylikRutin</td><td class="py-1.5 font-sans">Aylik rutin (devir + alis + cikis)</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4">sp_Fifo_AylikRutinFull</td><td class="py-1.5 font-sans">Tam aylik rutin (sentetik dahil)</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4">sp_MaliyetAdimYaz</td><td class="py-1.5 font-sans">Islem loglama</td></tr>
+                        <tr><td class="py-1.5 pr-4">sp_Ortalama_AylikHesapla</td><td class="py-1.5 font-sans">Ortalama maliyet hesaplama</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tablo Listesi -->
+        <div>
+            <h3 class="text-sm font-semibold text-gray-800 mb-2">Tablolar</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="border-b border-gray-200">
+                            <th class="py-2 pr-4 text-left font-medium text-gray-700">Tablo</th>
+                            <th class="py-2 pr-4 text-left font-medium text-gray-700">PK</th>
+                            <th class="py-2 text-left font-medium text-gray-700">Aciklama</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-gray-600">
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4 font-mono">FifoKatman</td><td class="py-1.5 pr-4">KatmanId (IDENTITY)</td><td class="py-1.5">FIFO maliyet katmanlari</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4 font-mono">FifoAcilisEnvanter</td><td class="py-1.5 pr-4">(EnvanterTarihi, MekanId, StkId)</td><td class="py-1.5">Acilis stok snapshot</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4 font-mono">FifoCikisDetay</td><td class="py-1.5 pr-4">CikisId (IDENTITY)</td><td class="py-1.5">FIFO cikis detaylari</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4 font-mono">FifoFallbackFiyatlari</td><td class="py-1.5 pr-4">(StkId, SatinalmaSarti, MekanId)</td><td class="py-1.5">Fallback fiyatlar</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4 font-mono">FifoSorunluStoklar</td><td class="py-1.5 pr-4">(EnvanterTarihi, MekanId, StkId, SorunTipi)</td><td class="py-1.5">Sorunlu stoklar</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4 font-mono">MaliyetIslem</td><td class="py-1.5 pr-4">IslemId (GUID)</td><td class="py-1.5">Islem log baslik</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4 font-mono">MaliyetIslemAdim</td><td class="py-1.5 pr-4">(IslemId, AdimKodu)</td><td class="py-1.5">Islem log adim</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4 font-mono">OrtalamaAylikMaliyet</td><td class="py-1.5 pr-4">(YilAy, StkId)</td><td class="py-1.5">Aylik ortalama maliyet</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4 font-mono">FifoBatchRun</td><td class="py-1.5 pr-4">RunId (GUID)</td><td class="py-1.5">Batch calistirma ust kayit</td></tr>
+                        <tr class="border-b border-gray-50"><td class="py-1.5 pr-4 font-mono">FifoBatchDetay</td><td class="py-1.5 pr-4">DetayId (IDENTITY)</td><td class="py-1.5">Batch detay takibi</td></tr>
+                        <tr><td class="py-1.5 pr-4 font-mono">FifoBatchHata</td><td class="py-1.5 pr-4">HataId (IDENTITY)</td><td class="py-1.5">Urun bazli hata logu</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Hangfire -->
+        <div>
+            <h3 class="text-sm font-semibold text-gray-800 mb-2">Hangfire Otomasyon</h3>
+            <p class="text-xs text-gray-600">
+                Hangfire orchestrator (<code class="rounded bg-gray-100 px-1.5 py-0.5 font-mono">D:/Dev/fifo/hangfire/</code>) ayri bir .NET 10 projesidir.
+                Her ayin 1'i saat 01:00'de <code class="rounded bg-gray-100 px-1.5 py-0.5 font-mono">sp_Fifo_AylikRutin</code> SP'sini cagirir.
+                Hangfire Panel'e sol menudeki link ile erisebilirsiniz.
+            </p>
+        </div>
+    </div>
+</details>

@@ -1,0 +1,343 @@
+@page
+@model App.Features.Fifo.AcilisModel
+@{
+    ViewData["Title"] = "Acilis Maliyetlendirme";
+}
+
+<section class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+    <div class="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-8 shadow-lg">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-50 via-transparent to-transparent"></div>
+        <div class="relative">
+            <div class="text-xs font-medium uppercase tracking-widest text-blue-600">FIFO Acilis</div>
+            <h1 class="mt-3 text-3xl font-semibold leading-tight text-gray-900">Acilis Maliyetlendirme</h1>
+            <p class="mt-4 text-sm leading-6 text-gray-500">
+                Envanter tarihindeki stoklar ters fatura aging ile katmanlara bolunur ve
+                FifoKatman tablosuna ACILIS olarak yazilir.
+            </p>
+            <div class="mt-6 flex flex-wrap gap-2 text-xs text-gray-400">
+                <span class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1">bkm.sp_fifo_StokMaliyetAcilis_V2</span>
+                <span class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1">FifoAcilisEnvanter</span>
+                <span class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1">FifoSorunluStoklar</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
+        <div class="text-xs font-medium uppercase tracking-widest text-gray-400">Acilis notlari</div>
+        <div class="mt-2 text-lg font-semibold text-gray-900">Kritik hatirlatmalar</div>
+        <div class="mt-5 space-y-4 text-sm text-gray-500">
+            <div class="flex items-start gap-3">
+                <span class="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-blue-500"></span>
+                <div>
+                    <div class="font-semibold text-gray-900">Tek seferlik</div>
+                    <div>Yil veya ay kapanisi icin bir kez calistirilir.</div>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <span class="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-amber-500"></span>
+                <div>
+                    <div class="font-semibold text-gray-900">Eksik maliyetler</div>
+                    <div>Eksik kalanlar FifoSorunluStoklar tablosuna yazilir.</div>
+                </div>
+            </div>
+            <div class="flex items-start gap-3">
+                <span class="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-emerald-500"></span>
+                <div>
+                    <div class="font-semibold text-gray-900">Tek urun</div>
+                    <div>StkId ile parca parca guncelleme yapilabilir.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
+    <form method="post" class="grid gap-6" data-run-form="acilis">
+        <div class="grid gap-4 lg:grid-cols-2">
+            <label class="block text-sm text-gray-600">
+                <span class="font-medium">Envanter tarihi</span>
+                <input type="date" asp-for="EnvanterTarihi"
+                       class="mt-2 block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+            </label>
+            <label class="block text-sm text-gray-600">
+                <span class="font-medium">StkId (opsiyonel)</span>
+                <input type="number" asp-for="StkId" placeholder="392"
+                       class="mt-2 block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+            </label>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+            <button type="submit"
+                    class="inline-flex items-center justify-center rounded-full bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:-translate-y-0.5 hover:bg-blue-700 active:translate-y-0"
+                    data-run-submit>
+                Acilis baslat
+            </button>
+            <span class="text-xs text-gray-400">Yil/ay kapanisinda bir kez calistirilir.</span>
+        </div>
+
+        <!-- Timeline -->
+        <div class="rounded-xl border border-gray-200 bg-gray-50/50 p-4">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <div class="text-[11px] font-medium uppercase tracking-widest text-gray-400">Zaman cizelgesi</div>
+                    <div class="text-sm font-semibold text-gray-900">Acilis akisi</div>
+                </div>
+                <span class="rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-medium text-gray-500" data-run-status>Hazir</span>
+            </div>
+
+            <div class="mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                <svg class="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+                <span>Bu islem yaklasik <strong>2-3 dakika</strong> surer. Sayfa acik kalmali, ilerleme asagida gorunecek.</span>
+            </div>
+            <ol class="relative mt-4 space-y-3 border-l-2 border-gray-200 pl-6" data-run-timeline>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="envanter_v2" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold text-gray-900">Envanter snapshot</div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-400">Stoklar FifoAcilisEnvanter tablosuna yazilir.</div>
+                </li>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="alis_v2" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold text-gray-900">Alislar toplanir</div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-400">Ters fatura aging icin alis hareketleri hazirlanir.</div>
+                </li>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="katman_v2" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold text-gray-900">Ters FIFO katman</div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-400">Acilis katmanlari hesaplanir ve FifoKatman'a yazilir.</div>
+                </li>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="tamamla_v2" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold text-gray-900">Tamamlama</div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-400">Islem sonuclari yazilir.</div>
+                </li>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="aylik_devir_v2" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold text-gray-900">Aylik devir</div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-400">ERP devir fiyatlari ile aylik maliyet hesabi.</div>
+                </li>
+                <li class="relative rounded-xl border border-gray-200 bg-white p-4 transition" data-step data-step-key="sorun_v2" data-status="idle">
+                    <span class="absolute -left-[29px] top-5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-gray-200 bg-white" data-dot>
+                        <span class="h-1.5 w-1.5 rounded-full bg-gray-300" data-dot-inner></span>
+                    </span>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-semibold text-gray-900">Sorun kaydi</div>
+                        <span class="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-400" data-step-state>Bekliyor</span>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-400">Eksik maliyetler FifoSorunluStoklar'a eklenir.</div>
+                </li>
+            </ol>
+        </div>
+
+        <!-- Mesaj alani -->
+        <div class="hidden rounded-xl border px-4 py-3 text-sm" data-run-message></div>
+    </form>
+</section>
+
+@section Scripts
+{
+<script>
+(() => {
+    const form = document.querySelector("[data-run-form='acilis']");
+    if (!form) return;
+
+    const statusPill  = form.querySelector("[data-run-status]");
+    const submitBtn   = form.querySelector("[data-run-submit]");
+    const steps       = Array.from(form.querySelectorAll("[data-step]"));
+    const msgBox      = form.querySelector("[data-run-message]");
+
+    const stepLabels = { idle: "Bekliyor", active: "Calisiyor", done: "Tamam", skipped: "Atlandi", error: "Hata" };
+    const runLabels  = { READY: "Hazir", CALISIYOR: "Calisiyor", TAMAMLANDI: "Tamamlandi", HATA: "Hata" };
+
+    const statusColors = {
+        idle:    { border: "border-gray-200",  dot: "bg-gray-300",   badge: "text-gray-400 border-gray-200" },
+        active:  { border: "border-blue-300",  dot: "bg-blue-500",   badge: "text-blue-600 border-blue-200 bg-blue-50" },
+        done:    { border: "border-green-300", dot: "bg-green-500",  badge: "text-green-600 border-green-200 bg-green-50" },
+        skipped: { border: "border-gray-300",  dot: "bg-gray-400",   badge: "text-gray-500 border-gray-200 bg-gray-50" },
+        error:   { border: "border-red-300",   dot: "bg-red-500",    badge: "text-red-600 border-red-200 bg-red-50" }
+    };
+
+    function setStepStatus(el, status) {
+        const prev = el.dataset.status || "idle";
+        el.dataset.status = status;
+
+        // border
+        const prevC = statusColors[prev] || statusColors.idle;
+        const newC  = statusColors[status] || statusColors.idle;
+        el.classList.remove(prevC.border);
+        el.classList.add(newC.border);
+
+        // dot
+        const dotInner = el.querySelector("[data-dot-inner]");
+        if (dotInner) { dotInner.classList.remove(prevC.dot); dotInner.classList.add(newC.dot); }
+
+        // badge
+        const badge = el.querySelector("[data-step-state]");
+        if (badge) {
+            badge.className = "rounded-full border px-2 py-0.5 text-[10px] font-medium " + newC.badge;
+            badge.textContent = stepLabels[status] || stepLabels.idle;
+        }
+    }
+
+    function showMessage(text, isError) {
+        if (!msgBox) return;
+        msgBox.classList.remove("hidden", "border-red-200", "bg-red-50", "text-red-600",
+                                "border-green-200", "bg-green-50", "text-green-700");
+        if (isError) {
+            msgBox.classList.add("border-red-200", "bg-red-50", "text-red-600");
+        } else {
+            msgBox.classList.add("border-green-200", "bg-green-50", "text-green-700");
+        }
+        msgBox.textContent = text;
+    }
+
+    function hideMessage() { if (msgBox) msgBox.classList.add("hidden"); }
+
+    function lock() {
+        submitBtn.disabled = true;
+        submitBtn.classList.add("opacity-60", "cursor-wait");
+    }
+
+    function unlock() {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove("opacity-60", "cursor-wait");
+    }
+
+    function setRunStatus(label) {
+        if (statusPill) statusPill.textContent = label;
+    }
+
+    function mapDurum(d) {
+        if (!d) return "idle";
+        switch (d.toUpperCase()) {
+            case "CALISIYOR": return "active";
+            case "TAMAMLANDI": return "done";
+            case "ATLANDI": return "skipped";
+            case "HATA": return "error";
+            default: return "idle";
+        }
+    }
+
+    function applySteps(adimlar) {
+        const byKey = new Map(adimlar.map(a => [a.adimKodu, a]));
+        steps.forEach(el => {
+            const key = el.dataset.stepKey;
+            const match = byKey.get(key);
+            if (match) setStepStatus(el, mapDurum(match.durum));
+        });
+    }
+
+    function reset() {
+        steps.forEach(el => setStepStatus(el, "idle"));
+        setRunStatus("Hazir");
+        hideMessage();
+    }
+
+    function buildUrl(handler, params) {
+        const url = new URL(window.location.pathname, window.location.origin);
+        url.searchParams.set("handler", handler);
+        if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+        return url.toString();
+    }
+
+    let pollTimer = null;
+    let activeIslemId = null;
+
+    function stopPolling() {
+        if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+    }
+
+    async function poll() {
+        if (!activeIslemId) return;
+        try {
+            const resp = await fetch(buildUrl("Durum", { islemId: activeIslemId }), {
+                headers: { "Accept": "application/json" }
+            });
+            if (!resp.ok) throw new Error("Durum okunamadi");
+            const data = await resp.json();
+            if (!data.ok) throw new Error(data.error || "Durum okunamadi");
+
+            setRunStatus(runLabels[data.durum] || data.durum);
+            if (Array.isArray(data.adimlar)) applySteps(data.adimlar);
+
+            if (data.durum === "TAMAMLANDI") {
+                stopPolling();
+                activeIslemId = null;
+                unlock();
+                showMessage(data.aciklama || "Acilis maliyetlendirme tamamlandi.", false);
+                return;
+            }
+            if (data.durum === "HATA") {
+                stopPolling();
+                activeIslemId = null;
+                unlock();
+                showMessage(data.aciklama || "Islem sirasinda hata olustu.", true);
+                return;
+            }
+
+            pollTimer = setTimeout(poll, 1000);
+        } catch (err) {
+            stopPolling();
+            activeIslemId = null;
+            setRunStatus("Hata");
+            showMessage("Durum sorgusu basarisiz: " + err.message, true);
+            unlock();
+        }
+    }
+
+    reset();
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (submitBtn.disabled) return;
+
+        lock();
+        reset();
+        setRunStatus("Baslatiliyor...");
+
+        try {
+            const resp = await fetch(buildUrl("Start"), {
+                method: "POST",
+                body: new FormData(form),
+                headers: { "X-Requested-With": "XMLHttpRequest" }
+            });
+            const data = await resp.json();
+            if (!resp.ok || !data.ok) throw new Error(data?.error || "Baslatma hatasi");
+
+            activeIslemId = data.islemId;
+            setRunStatus("Calisiyor");
+            stopPolling();
+            pollTimer = setTimeout(poll, 500);
+        } catch (err) {
+            setRunStatus("Hata");
+            showMessage(err.message, true);
+            unlock();
+        }
+    });
+})();
+</script>
+}

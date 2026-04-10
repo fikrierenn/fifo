@@ -1,0 +1,137 @@
+@page
+@model App.Features.Rapor.BrutKarModel
+@{
+    ViewData["Title"] = "Brut Kar Raporu";
+}
+
+<!-- Baslik -->
+<div class="mb-8">
+    <h1 class="text-2xl font-semibold">Brut Kar Raporu</h1>
+    <p class="mt-1 text-sm text-[color:var(--muted)]">Satis geliri - SMM (FIFO) = Brut Kar. Mekan bazli analiz.</p>
+</div>
+
+<!-- Yil/Ay Secici -->
+<form method="get" class="flex items-end gap-3 mb-8">
+    <div>
+        <label class="block text-xs font-medium text-[color:var(--muted)] mb-1">Donem</label>
+        <select name="Yil" class="rounded-lg border border-[color:var(--line)] bg-white px-3 py-2 text-sm focus:border-[color:var(--accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--accent)]/30">
+            @foreach (var donem in Model.MevcutDonemler.Select(d => d / 100).Distinct())
+            {
+                <option value="@donem" selected="@(Model.Yil == donem)">@donem</option>
+            }
+        </select>
+    </div>
+    <div>
+        <select name="Ay" class="rounded-lg border border-[color:var(--line)] bg-white px-3 py-2 text-sm focus:border-[color:var(--accent)] focus:outline-none focus:ring-1 focus:ring-[color:var(--accent)]/30">
+            @for (int m = 1; m <= 12; m++)
+            {
+                <option value="@m" selected="@(Model.Ay == m)">@m.ToString("D2")</option>
+            }
+        </select>
+    </div>
+    <button type="submit" class="rounded-lg bg-[color:var(--accent)] px-4 py-2 text-sm font-medium text-white shadow-sm hover:opacity-90 transition">
+        Goster
+    </button>
+</form>
+
+<!-- Toplam Ozet Karti -->
+@if (Model.Mekanlar.Count > 0)
+{
+    <div class="rounded-xl border border-[color:var(--line)] bg-white p-5 mb-8">
+        <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-3">Toplam Ozet &middot; @Model.Yil/@Model.Ay?.ToString("D2")</div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-5">
+            <div>
+                <div class="text-xs text-[color:var(--muted)]">Satis Geliri</div>
+                <div class="text-2xl font-bold text-[color:var(--ink)]">@Model.Toplam.SatisGeliri.ToString("N0") <span class="text-sm font-normal">TL</span></div>
+            </div>
+            <div>
+                <div class="text-xs text-[color:var(--muted)]">SMM</div>
+                <div class="text-2xl font-bold text-red-600">@Model.Toplam.SMM.ToString("N0") <span class="text-sm font-normal">TL</span></div>
+            </div>
+            <div>
+                <div class="text-xs text-[color:var(--muted)]">Brut Kar</div>
+                <div class="text-2xl font-bold @(Model.Toplam.BrutKar >= 0 ? "text-green-600" : "text-red-600")">@Model.Toplam.BrutKar.ToString("N0") <span class="text-sm font-normal">TL</span></div>
+            </div>
+            <div>
+                <div class="text-xs text-[color:var(--muted)]">Marj</div>
+                <div class="text-2xl font-bold @(Model.Toplam.BrutKarMarji >= 0 ? "text-green-600" : "text-red-600")">%@Model.Toplam.BrutKarMarji.ToString("N1")</div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Mekan Kartlari -->
+@if (Model.Mekanlar.Count > 0)
+{
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-8">
+        @foreach (var m in Model.Mekanlar)
+        {
+            <div class="rounded-xl border border-[color:var(--line)] bg-white p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="text-sm font-semibold">@m.MekanAdi</div>
+                    <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium
+                        @(m.BrutKarMarji >= 20 ? "bg-green-50 text-green-700" :
+                          m.BrutKarMarji >= 0 ? "bg-amber-50 text-amber-700" :
+                          "bg-red-50 text-red-700")">
+                        %@m.BrutKarMarji.ToString("N1")
+                    </span>
+                </div>
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                        <div class="text-xs text-[color:var(--muted)]">Satis Geliri</div>
+                        <div class="font-medium tabular-nums">@m.SatisGeliri.ToString("N2") TL</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-[color:var(--muted)]">SMM</div>
+                        <div class="font-medium tabular-nums text-red-600">@m.SMM.ToString("N2") TL</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-[color:var(--muted)]">Brut Kar</div>
+                        <div class="font-medium tabular-nums @(m.BrutKar >= 0 ? "text-green-600" : "text-red-600")">@m.BrutKar.ToString("N2") TL</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-[color:var(--muted)]">Marj</div>
+                        <div class="font-medium tabular-nums @(m.BrutKarMarji >= 0 ? "text-green-600" : "text-red-600")">%@m.BrutKarMarji.ToString("N1")</div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<!-- Bar Chart: Mekan Bazli Brut Kar -->
+<div class="rounded-xl border border-[color:var(--line)] bg-white p-5 mb-8">
+    <div class="flex items-center justify-between mb-3">
+        <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)]">Mekan Bazli Brut Kar Karsilastirma</div>
+        <a href="?handler=Export&Yil=@Model.Yil&Ay=@Model.Ay" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50 transition">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+            CSV
+        </a>
+    </div>
+    <div class="h-72"><canvas id="chartBrutKar"></canvas></div>
+</div>
+
+@if (Model.Mekanlar.Count == 0)
+{
+    <div class="rounded-xl border border-[color:var(--line)] bg-white p-8 text-center text-sm text-[color:var(--muted)]">
+        Secilen donem icin brut kar verisi bulunamadi.
+    </div>
+}
+
+@section Scripts {
+<script>
+@if (Model.Mekanlar.Count > 0)
+{
+    @:const mekanLabels = [@Html.Raw(string.Join(",", Model.Mekanlar.Select(m => $"'{m.MekanAdi}'")))];
+    @:const gelirData = [@Html.Raw(string.Join(",", Model.Mekanlar.Select(m => m.SatisGeliri.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))))];
+    @:const smmData = [@Html.Raw(string.Join(",", Model.Mekanlar.Select(m => m.SMM.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))))];
+    @:const brutKarData = [@Html.Raw(string.Join(",", Model.Mekanlar.Select(m => m.BrutKar.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))))];
+    @:
+    @:BKM.bar('chartBrutKar', mekanLabels, [
+    @:    { label: 'Satis Geliri', data: gelirData, backgroundColor: '#3b82f6' },
+    @:    { label: 'SMM', data: smmData, backgroundColor: '#ef4444' },
+    @:    { label: 'Brut Kar', data: brutKarData, backgroundColor: '#10b981' }
+    @:]);
+}
+</script>
+}

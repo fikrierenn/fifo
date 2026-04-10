@@ -1,0 +1,205 @@
+@page
+@model App.Features.Rapor.IndexModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<!-- Baslik -->
+<div class="mb-8">
+    <h1 class="text-2xl font-semibold">Dashboard</h1>
+    <p class="mt-1 text-sm text-[color:var(--muted)]">FIFO maliyet sistemi genel gorunumu.</p>
+</div>
+
+<!-- Ozet Kartlari -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
+    <!-- Toplam Katman -->
+    <div class="rounded-xl border border-[color:var(--line)] bg-white p-5">
+        <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-1">Toplam Katman</div>
+        <div class="text-3xl font-bold text-[color:var(--ink)]">@Model.ToplamKatman.ToString("N0")</div>
+        <div class="mt-1 text-xs text-[color:var(--muted)]">Aktif FIFO katmanlari</div>
+    </div>
+    <!-- Stok Degeri -->
+    <div class="rounded-xl border border-[color:var(--line)] bg-white p-5">
+        <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-1">Stok Degeri</div>
+        <div class="text-3xl font-bold text-[color:var(--accent)]">@Model.ToplamStokDegeri.ToString("N2") <span class="text-base font-normal">TL</span></div>
+        <div class="mt-1 text-xs text-[color:var(--muted)]">Toplam kalan stok degeri</div>
+    </div>
+    <!-- Sorunlu Stok -->
+    <div class="rounded-xl border border-[color:var(--line)] bg-white p-5">
+        <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-1">Sorunlu Stok</div>
+        <div class="text-3xl font-bold @(Model.SorunluStokSayisi > 0 ? "text-red-600" : "text-green-600")">@Model.SorunluStokSayisi</div>
+        <div class="mt-1 text-xs text-[color:var(--muted)]">Farkli urun sayisi</div>
+    </div>
+</div>
+
+<!-- Katman Durumu Tablosu -->
+<div class="rounded-xl border border-[color:var(--line)] bg-white mb-8">
+    <div class="px-5 py-4 border-b border-[color:var(--line)] flex items-center justify-between">
+        <div>
+            <h2 class="text-sm font-semibold">Katman Durumu</h2>
+            <p class="text-xs text-[color:var(--muted)] mt-0.5">Urun bazli FIFO katman ozeti</p>
+        </div>
+        <a href="?handler=Export" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50 transition">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+            CSV
+        </a>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-[color:var(--line)] text-left text-xs font-medium uppercase tracking-wider text-[color:var(--muted)]">
+                    <th class="px-5 py-3">Urun</th>
+                    <th class="px-5 py-3">Kaynak</th>
+                    <th class="px-5 py-3 text-right">Katman</th>
+                    <th class="px-5 py-3 text-right">Kalan</th>
+                    <th class="px-5 py-3 text-right">Tuketilen</th>
+                    <th class="px-5 py-3 text-right">Ort. Birim</th>
+                    <th class="px-5 py-3 text-right">Min</th>
+                    <th class="px-5 py-3 text-right">Max</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[color:var(--line)]">
+                @if (Model.Katmanlar.Count == 0)
+                {
+                    <tr>
+                        <td colspan="8" class="px-5 py-8 text-center text-[color:var(--muted)]">Katman verisi bulunamadi.</td>
+                    </tr>
+                }
+                @foreach (var k in Model.Katmanlar)
+                {
+                    <tr class="hover:bg-[color:var(--bg)] transition-colors @(Db.DevreDisiMi(k.StkId) ? "devre-disi" : "")" data-href="/Rapor/UrunDetay?stkId=@k.StkId" data-stkid="@k.StkId">
+                        <td class="px-5 py-3 font-medium">
+                            <a href="/Rapor/UrunDetay?stkId=@k.StkId" class="text-blue-600 hover:underline dark:text-blue-400">@Db.UrunAdi(k.StkId)</a>
+                        </td>
+                        <td class="px-5 py-3">
+                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium
+                                @(k.KaynakTip == "Alis" ? "bg-blue-50 text-blue-700" :
+                                  k.KaynakTip == "Acilis" ? "bg-amber-50 text-amber-700" :
+                                  "bg-gray-50 text-gray-700")">
+                                @k.KaynakTip
+                            </span>
+                        </td>
+                        <td class="px-5 py-3 text-right tabular-nums">@k.KatmanSayisi</td>
+                        <td class="px-5 py-3 text-right tabular-nums font-medium">@k.KalanMiktar.ToString("N2")</td>
+                        <td class="px-5 py-3 text-right tabular-nums">@k.TuketilenMiktar.ToString("N2")</td>
+                        <td class="px-5 py-3 text-right tabular-nums">@k.OrtalamaBirimMaliyet.ToString("N4")</td>
+                        <td class="px-5 py-3 text-right tabular-nums text-[color:var(--muted)]">@k.MinBirimMaliyet.ToString("N4")</td>
+                        <td class="px-5 py-3 text-right tabular-nums text-[color:var(--muted)]">@k.MaxBirimMaliyet.ToString("N4")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Kaynak Tip Dagilimi Chart -->
+<div class="rounded-xl border border-[color:var(--line)] bg-white p-5 mb-8">
+    <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-3">Kaynak Tip Dagilimi</div>
+    <div class="h-64"><canvas id="chartKaynakTip"></canvas></div>
+</div>
+
+<!-- Alt Grid: Son Islemler + Batch Run -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <!-- Son Islemler -->
+    <div class="rounded-xl border border-[color:var(--line)] bg-white">
+        <div class="px-5 py-4 border-b border-[color:var(--line)]">
+            <h2 class="text-sm font-semibold">Son Islemler</h2>
+            <p class="text-xs text-[color:var(--muted)] mt-0.5">MaliyetIslem kayitlari</p>
+        </div>
+        <div class="divide-y divide-[color:var(--line)]">
+            @if (Model.Islemler.Count == 0)
+            {
+                <div class="px-5 py-8 text-center text-sm text-[color:var(--muted)]">Islem kaydi yok.</div>
+            }
+            @foreach (var islem in Model.Islemler)
+            {
+                <div class="px-5 py-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-[color:var(--bg)] transition-colors"
+                     onclick="window.location='/Rapor/IslemLog?islemId=@islem.IslemId'">
+                    <div class="min-w-0">
+                        <div class="text-sm font-medium truncate">@islem.IslemAdi</div>
+                        <div class="text-xs text-[color:var(--muted)]">
+                            @islem.Baslangic.ToString("dd.MM.yyyy HH:mm")
+                            @if (islem.StkId.HasValue)
+                            {
+                                <span class="ml-1">&middot; <a href="/Rapor/UrunDetay?StkId=@islem.StkId" class="text-blue-600 hover:underline dark:text-blue-400">@Db.UrunAdi(islem.StkId.Value)</a></span>
+                            }
+                        </div>
+                        @if (!string.IsNullOrEmpty(islem.Aciklama))
+                        {
+                            <div class="text-xs text-[color:var(--muted)] truncate mt-0.5">@islem.Aciklama</div>
+                        }
+                    </div>
+                    <span class="shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
+                        @(islem.Durum == "Basarili" ? "bg-green-50 text-green-700" :
+                          islem.Durum == "Hata" ? "bg-red-50 text-red-700" :
+                          islem.Durum == "Devam" ? "bg-yellow-50 text-yellow-700" :
+                          "bg-gray-50 text-gray-700")">
+                        @islem.Durum
+                    </span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Batch Run Ozeti -->
+    <div class="rounded-xl border border-[color:var(--line)] bg-white">
+        <div class="px-5 py-4 border-b border-[color:var(--line)]">
+            <h2 class="text-sm font-semibold">Batch Run Ozeti</h2>
+            <p class="text-xs text-[color:var(--muted)] mt-0.5">FIFO batch calistirma gecmisi</p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-[color:var(--line)] text-left text-xs font-medium uppercase tracking-wider text-[color:var(--muted)]">
+                        <th class="px-5 py-3">Donem</th>
+                        <th class="px-5 py-3">Durum</th>
+                        <th class="px-5 py-3 text-right">Urun</th>
+                        <th class="px-5 py-3 text-right">Batch</th>
+                        <th class="px-5 py-3 text-right">Sure</th>
+                        <th class="px-5 py-3 text-right">Hata</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[color:var(--line)]">
+                    @if (Model.BatchRunlar.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="6" class="px-5 py-8 text-center text-[color:var(--muted)]">Batch run kaydi yok.</td>
+                        </tr>
+                    }
+                    @foreach (var b in Model.BatchRunlar)
+                    {
+                        <tr class="hover:bg-[color:var(--bg)] transition-colors">
+                            <td class="px-5 py-3 font-medium">@b.DonemYil/@b.DonemAy.ToString("D2")</td>
+                            <td class="px-5 py-3">
+                                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
+                                    @(b.Durum == "Tamamlandi" ? "bg-green-50 text-green-700" :
+                                      b.Durum == "Hata" ? "bg-red-50 text-red-700" :
+                                      b.Durum == "Devam" ? "bg-yellow-50 text-yellow-700" :
+                                      "bg-gray-50 text-gray-700")">
+                                    @b.Durum
+                                </span>
+                            </td>
+                            <td class="px-5 py-3 text-right tabular-nums">@b.ToplamUrun</td>
+                            <td class="px-5 py-3 text-right tabular-nums">@b.TamamlananBatch/@b.ToplamBatch</td>
+                            <td class="px-5 py-3 text-right tabular-nums text-[color:var(--muted)]">
+                                @(b.SureSaniye.HasValue ? $"{b.SureSaniye}s" : "-")
+                            </td>
+                            <td class="px-5 py-3 text-right tabular-nums @(b.ToplamHataUrun > 0 ? "text-red-600 font-medium" : "text-[color:var(--muted)]")">
+                                @b.ToplamHataUrun
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+// KaynakTip dagilimi — server-side veriden
+const kaynakLabels = [@Html.Raw(string.Join(",", Model.Katmanlar.GroupBy(k => k.KaynakTip).Select(g => $"'{g.Key}'")))];
+const kaynakData = [@Html.Raw(string.Join(",", Model.Katmanlar.GroupBy(k => k.KaynakTip).Select(g => g.Sum(x => x.KalanMiktar).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))))];
+BKM.doughnut('chartKaynakTip', kaynakLabels, kaynakData);
+</script>
+}

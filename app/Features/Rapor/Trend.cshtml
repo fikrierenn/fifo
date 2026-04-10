@@ -1,0 +1,141 @@
+@page
+@model App.Features.Rapor.TrendModel
+@{
+    ViewData["Title"] = "Trend Analizi";
+    var donemler = Model.Donemler.OrderBy(d => d.YilAy).ToList();
+    var smmler = Model.SmmVerileri.OrderBy(d => d.YilAy).ToList();
+}
+
+<!-- Baslik -->
+<div class="mb-8">
+    <h1 class="text-2xl font-semibold">Trend Analizi</h1>
+    <p class="mt-1 text-sm text-[color:var(--muted)]">Donemler arasi SMM, birim maliyet ve stok degeri trendi.</p>
+</div>
+
+<!-- Donem Secici -->
+<div class="flex items-center gap-2 mb-6">
+    @foreach (var n in new[] { 3, 6, 12 })
+    {
+        var active = Model.DonemSayisi == n;
+        <a href="?DonemSayisi=@n"
+           class="rounded-lg px-4 py-2 text-sm font-medium transition
+                  @(active ? "bg-[color:var(--accent)] text-white shadow-sm" : "border border-[color:var(--line)] text-[color:var(--muted)] hover:bg-[color:var(--accent)]/5 hover:text-[color:var(--ink)]")">
+            @n Ay
+        </a>
+    }
+</div>
+
+<!-- Ozet Kartlari -->
+@if (donemler.Count > 0)
+{
+    var son = donemler.Last();
+    var sonSmm = smmler.LastOrDefault();
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-5 mb-8">
+        <div class="rounded-xl border border-[color:var(--line)] bg-white p-5">
+            <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-1">Son Donem</div>
+            <div class="text-3xl font-bold text-[color:var(--ink)]">@son.YilAy</div>
+        </div>
+        <div class="rounded-xl border border-[color:var(--line)] bg-white p-5">
+            <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-1">Stok Degeri</div>
+            <div class="text-3xl font-bold text-[color:var(--accent)]">@son.ToplamDeger.ToString("N0") <span class="text-base font-normal">TL</span></div>
+        </div>
+        <div class="rounded-xl border border-[color:var(--line)] bg-white p-5">
+            <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-1">Urun Sayisi</div>
+            <div class="text-3xl font-bold text-[color:var(--ink)]">@son.UrunSayisi.ToString("N0")</div>
+        </div>
+        <div class="rounded-xl border border-[color:var(--line)] bg-white p-5">
+            <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-1">Aylik SMM</div>
+            <div class="text-3xl font-bold text-red-600">@((sonSmm?.SatisSMM ?? 0).ToString("N0")) <span class="text-base font-normal">TL</span></div>
+        </div>
+    </div>
+}
+
+<!-- Chart: Stok Degeri Trendi -->
+<div class="rounded-xl border border-[color:var(--line)] bg-white p-5 mb-8">
+    <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-3">Toplam Stok Degeri Trendi</div>
+    <div class="h-72"><canvas id="chartStokDegeri"></canvas></div>
+</div>
+
+<!-- Chart: Aylik SMM Trendi -->
+<div class="rounded-xl border border-[color:var(--line)] bg-white p-5 mb-8">
+    <div class="text-xs font-medium uppercase tracking-wider text-[color:var(--muted)] mb-3">Aylik SMM Trendi</div>
+    <div class="h-72"><canvas id="chartSmm"></canvas></div>
+</div>
+
+<!-- Tablo -->
+<div class="rounded-xl border border-[color:var(--line)] bg-white mb-8">
+    <div class="px-5 py-4 border-b border-[color:var(--line)] flex items-center justify-between">
+        <div>
+            <h2 class="text-sm font-semibold">Donem Detay</h2>
+            <p class="text-xs text-[color:var(--muted)] mt-0.5">@Model.DonemSayisi aylik trend verisi</p>
+        </div>
+        <a href="?handler=Export&DonemSayisi=@Model.DonemSayisi" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50 transition">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+            CSV
+        </a>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-[color:var(--line)] text-left text-xs font-medium uppercase tracking-wider text-[color:var(--muted)]">
+                    <th class="px-5 py-3">YilAy</th>
+                    <th class="px-5 py-3 text-right">Urun Sayisi</th>
+                    <th class="px-5 py-3 text-right">Stok Degeri</th>
+                    <th class="px-5 py-3 text-right">Giris Tutar</th>
+                    <th class="px-5 py-3 text-right">Satis SMM</th>
+                    <th class="px-5 py-3 text-right">Iade SMM</th>
+                    <th class="px-5 py-3 text-right">Net SMM</th>
+                    <th class="px-5 py-3 text-right">Hareketli Urun</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[color:var(--line)]">
+                @if (donemler.Count == 0)
+                {
+                    <tr>
+                        <td colspan="8" class="px-5 py-8 text-center text-[color:var(--muted)]">Trend verisi bulunamadi.</td>
+                    </tr>
+                }
+                @foreach (var d in donemler.OrderByDescending(x => x.YilAy))
+                {
+                    var smm = smmler.FirstOrDefault(s => s.YilAy == d.YilAy);
+                    <tr class="hover:bg-[color:var(--bg)] transition-colors">
+                        <td class="px-5 py-3 font-medium">@d.YilAy</td>
+                        <td class="px-5 py-3 text-right tabular-nums">@d.UrunSayisi.ToString("N0")</td>
+                        <td class="px-5 py-3 text-right tabular-nums font-medium">@d.ToplamDeger.ToString("N2")</td>
+                        <td class="px-5 py-3 text-right tabular-nums">@d.ToplamGirisTutar.ToString("N2")</td>
+                        <td class="px-5 py-3 text-right tabular-nums">@((smm?.SatisSMM ?? 0).ToString("N2"))</td>
+                        <td class="px-5 py-3 text-right tabular-nums text-[color:var(--muted)]">@((smm?.IadeSMM ?? 0).ToString("N2"))</td>
+                        <td class="px-5 py-3 text-right tabular-nums font-medium">@((smm?.NetSMM ?? 0).ToString("N2"))</td>
+                        <td class="px-5 py-3 text-right tabular-nums text-[color:var(--muted)]">@((smm?.HareketliUrun ?? 0).ToString("N0"))</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const trendLabels = [@Html.Raw(string.Join(",", donemler.Select(d => $"'{d.YilAy}'")))];
+const stokDegeri = [@Html.Raw(string.Join(",", donemler.Select(d => d.ToplamDeger.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))))];
+
+BKM.line('chartStokDegeri', trendLabels, [{
+    label: 'Stok Degeri (TL)',
+    data: stokDegeri,
+    borderColor: '#3b82f6',
+    backgroundColor: 'rgba(59,130,246,0.1)',
+    fill: true
+}]);
+
+const smmLabels = [@Html.Raw(string.Join(",", smmler.Select(d => $"'{d.YilAy}'")))];
+const satisSmmData = [@Html.Raw(string.Join(",", smmler.Select(d => d.SatisSMM.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))))];
+
+BKM.line('chartSmm', smmLabels, [{
+    label: 'Satis SMM (TL)',
+    data: satisSmmData,
+    borderColor: '#ef4444',
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    fill: true
+}]);
+</script>
+}

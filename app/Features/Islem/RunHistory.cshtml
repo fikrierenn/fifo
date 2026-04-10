@@ -1,0 +1,164 @@
+@page
+@model App.Features.Islem.RunHistoryModel
+@{
+    ViewData["Title"] = Model.SeciliRun != null ? $"Run Detay — {Model.SeciliRun.DonemStr}" : "Run Gecmisi";
+}
+
+@if (Model.SeciliRun != null)
+{
+    var run = Model.SeciliRun;
+    var durumClass = run.Durum switch {
+        "TAMAMLANDI" => "bg-green-50 text-green-700 border-green-200",
+        "HATA" => "bg-red-50 text-red-700 border-red-200",
+        "CALISIYOR" => "bg-violet-50 text-violet-700 border-violet-200",
+        _ => "bg-gray-50 text-gray-600 border-gray-200"
+    };
+
+    <section class="rounded-2xl border border-gray-200 bg-white p-8 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+        <div class="flex items-center gap-3">
+            <a href="/Islem/RunHistory" class="text-sm text-violet-600 hover:text-violet-700">&larr; Tum Runlar</a>
+        </div>
+        <div class="mt-4 flex flex-wrap items-center gap-4">
+            <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">@run.DonemStr</h1>
+            <span class="rounded-full border px-3 py-1 text-xs font-medium @durumClass">@run.Durum</span>
+        </div>
+        <div class="mt-4 grid gap-4 text-sm text-gray-500 sm:grid-cols-2 lg:grid-cols-4">
+            <div><span class="font-medium text-gray-700 dark:text-gray-300">Baslangic:</span> @run.RunBaslangic.ToString("dd.MM.yyyy HH:mm:ss")</div>
+            <div><span class="font-medium text-gray-700 dark:text-gray-300">Sure:</span> @run.SureStr</div>
+            <div><span class="font-medium text-gray-700 dark:text-gray-300">Urun:</span> @run.ToplamUrun</div>
+            <div><span class="font-medium text-gray-700 dark:text-gray-300">Batch:</span> @run.TamamlananBatch / @run.ToplamBatch (@(run.BatchBoyutu)'lik)</div>
+        </div>
+        @if (!string.IsNullOrEmpty(run.HataMesaji))
+        {
+            <div class="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">@run.HataMesaji</div>
+        }
+    </section>
+
+    @if (Model.Batchler.Count > 0)
+    {
+    <section class="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+        <div class="text-lg font-semibold text-gray-900 dark:text-white">Batch Detaylari</div>
+        <div class="mt-4 overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="border-b border-gray-100 text-xs font-medium uppercase tracking-wider text-gray-400 dark:border-gray-700">
+                        <th class="pb-3 pr-4">#</th>
+                        <th class="pb-3 pr-4">Urun</th>
+                        <th class="pb-3 pr-4">Basarili</th>
+                        <th class="pb-3 pr-4">Hatali</th>
+                        <th class="pb-3 pr-4">Sure</th>
+                        <th class="pb-3">Durum</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50 dark:divide-gray-700">
+                    @foreach (var b in Model.Batchler)
+                    {
+                        var bDurum = b.Durum switch {
+                            "TAMAMLANDI" => "bg-green-50 text-green-700 border-green-200",
+                            "HATA" => "bg-red-50 text-red-700 border-red-200",
+                            "CALISIYOR" => "bg-violet-50 text-violet-700 border-violet-200",
+                            _ => "bg-gray-50 text-gray-600 border-gray-200"
+                        };
+                        <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/30">
+                            <td class="py-2.5 pr-4 font-medium text-gray-900 dark:text-white">@b.BatchNo</td>
+                            <td class="py-2.5 pr-4">@b.UrunSayisi</td>
+                            <td class="py-2.5 pr-4 text-green-600">@(b.BasariliUrun ?? 0)</td>
+                            <td class="py-2.5 pr-4 text-red-600">@(b.HataliUrun ?? 0)</td>
+                            <td class="py-2.5 pr-4 text-xs text-gray-500">@b.SureStr</td>
+                            <td class="py-2.5"><span class="rounded-full border px-2 py-0.5 text-[10px] font-medium @bDurum">@b.Durum</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+    }
+
+    @if (Model.Hatalar.Count > 0)
+    {
+    <section class="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+        <div class="text-lg font-semibold text-red-700">Hatalar (@Model.Hatalar.Count)</div>
+        <div class="mt-4 overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="border-b border-gray-100 text-xs font-medium uppercase tracking-wider text-gray-400 dark:border-gray-700">
+                        <th class="pb-3 pr-4">Batch</th>
+                        <th class="pb-3 pr-4">Urun</th>
+                        <th class="pb-3 pr-4">Hata</th>
+                        <th class="pb-3">Zaman</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50 dark:divide-gray-700">
+                    @foreach (var h in Model.Hatalar)
+                    {
+                        <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/30">
+                            <td class="py-2.5 pr-4">@h.BatchNo</td>
+                            <td class="py-2.5 pr-4">
+                                <a href="/Rapor/UrunDetay?StkId=@h.StkId" class="font-medium text-violet-600 hover:text-violet-700">
+                                    @App.Lib.Db.UrunAdi(h.StkId)
+                                </a>
+                            </td>
+                            <td class="py-2.5 pr-4 text-xs text-red-600 max-w-md truncate">@h.HataMesaji</td>
+                            <td class="py-2.5 text-xs text-gray-500">@h.HataZamani.ToString("HH:mm:ss")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+    }
+}
+else
+{
+    <section class="rounded-2xl border border-gray-200 bg-white p-8 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+        <div class="flex items-center justify-between">
+            <div>
+                <div class="text-xs font-medium uppercase tracking-widest text-violet-600">Gecmis</div>
+                <h1 class="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">Batch Run Gecmisi</h1>
+            </div>
+            <a href="?handler=Export" class="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300">CSV Export</a>
+        </div>
+
+        @if (Model.Runlar.Count == 0)
+        {
+            <div class="mt-6 text-sm text-gray-400">Henuz batch calistirmasi yapilmamis.</div>
+        }
+        else
+        {
+        <div class="mt-6 overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="border-b border-gray-100 text-xs font-medium uppercase tracking-wider text-gray-400 dark:border-gray-700">
+                        <th class="pb-3 pr-4">Donem</th>
+                        <th class="pb-3 pr-4">Baslangic</th>
+                        <th class="pb-3 pr-4">Urun</th>
+                        <th class="pb-3 pr-4">Batch</th>
+                        <th class="pb-3 pr-4">Sure</th>
+                        <th class="pb-3">Durum</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50 dark:divide-gray-700">
+                    @foreach (var r in Model.Runlar)
+                    {
+                        var rDurum = r.Durum switch {
+                            "TAMAMLANDI" => "bg-green-50 text-green-700 border-green-200",
+                            "HATA" => "bg-red-50 text-red-700 border-red-200",
+                            "CALISIYOR" => "bg-violet-50 text-violet-700 border-violet-200",
+                            "KISMEN_HATA" => "bg-amber-50 text-amber-700 border-amber-200",
+                            _ => "bg-gray-50 text-gray-600 border-gray-200"
+                        };
+                        <tr class="cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-700/30" onclick="location.href='/Islem/RunHistory?RunId=@r.RunId'">
+                            <td class="py-3 pr-4 font-medium text-gray-900 dark:text-white">@r.DonemStr</td>
+                            <td class="py-3 pr-4 text-xs text-gray-500">@r.RunBaslangic.ToString("dd.MM.yyyy HH:mm")</td>
+                            <td class="py-3 pr-4">@r.ToplamUrun</td>
+                            <td class="py-3 pr-4">@r.TamamlananBatch / @r.ToplamBatch</td>
+                            <td class="py-3 pr-4 text-xs text-gray-500">@r.SureStr</td>
+                            <td class="py-3"><span class="rounded-full border px-2 py-0.5 text-[10px] font-medium @rDurum">@r.Durum</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        }
+    </section>
+}
