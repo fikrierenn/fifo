@@ -40,8 +40,8 @@ BEGIN
     IF @DahilSatis = 1
         INSERT INTO #hareketliUrunler (StkId)
         SELECT DISTINCT dt.ehStkId
-        FROM DerinSISBkm.dbo.irsAyr dt WITH(NOLOCK)
-        JOIN DerinSISBkm.dbo.irs bs  WITH(NOLOCK) ON dt.ehID = bs.eID
+        FROM DerinSIS_Local.dbo.irsAyr dt WITH(NOLOCK)
+        JOIN DerinSIS_Local.dbo.irs bs  WITH(NOLOCK) ON dt.ehID = bs.eID
         WHERE bs.eTip   IN (1, 4, 5, 100, 101)
           AND bs.eMekan IN (1, 12, 4477, 4478)
           AND bs.eTarihS >= CONVERT(smalldatetime, @Baslangic)
@@ -51,8 +51,8 @@ BEGIN
     IF @DahilAlis = 1
         INSERT INTO #hareketliUrunler (StkId)
         SELECT DISTINCT a.ehStkId
-        FROM DerinSISBkm.dbo.fatAyr a WITH(NOLOCK)
-        JOIN DerinSISBkm.dbo.fat   f WITH(NOLOCK) ON f.eID = a.ehID
+        FROM DerinSIS_Local.dbo.fatAyr a WITH(NOLOCK)
+        JOIN DerinSIS_Local.dbo.fat   f WITH(NOLOCK) ON f.eID = a.ehID
         WHERE f.eTip   IN (0, 2)
           AND a.ehAdetN <> 0
           AND f.eTarihS >= CONVERT(smalldatetime, @Baslangic)
@@ -65,20 +65,18 @@ BEGIN
         FROM dbo.FifoKatman
         WHERE KalanMiktar > 0;
 
-    /* DEVRE DISI FILTRE: FifoDevreDisiUrunler tablosundaki urunleri haric tut */
+    /* DEVRE DISI FILTRE: tek tarama — filtreli set #sonuc'a materialize, sayimlar ucuz temp'ten */
+    IF OBJECT_ID('tempdb..#sonuc', 'U') IS NOT NULL DROP TABLE #sonuc;
     SELECT DISTINCT h.StkId
+    INTO #sonuc
     FROM #hareketliUrunler h
-    WHERE NOT EXISTS (SELECT 1 FROM dbo.FifoDevreDisiUrunler dd WHERE dd.StkId = h.StkId)
-    ORDER BY h.StkId;
+    WHERE NOT EXISTS (SELECT 1 FROM dbo.FifoDevreDisiUrunler dd WHERE dd.StkId = h.StkId);
 
-    DECLARE @UrunSayisi INT = (
-        SELECT COUNT(DISTINCT h.StkId) FROM #hareketliUrunler h
-        WHERE NOT EXISTS (SELECT 1 FROM dbo.FifoDevreDisiUrunler dd WHERE dd.StkId = h.StkId)
-    );
-    DECLARE @DevreDisiSayisi INT = (
-        SELECT COUNT(DISTINCT h.StkId) FROM #hareketliUrunler h
-        WHERE EXISTS (SELECT 1 FROM dbo.FifoDevreDisiUrunler dd WHERE dd.StkId = h.StkId)
-    );
+    DECLARE @UrunSayisi      INT = (SELECT COUNT(*) FROM #sonuc);
+    DECLARE @ToplamHareketli INT = (SELECT COUNT(DISTINCT StkId) FROM #hareketliUrunler);
+    DECLARE @DevreDisiSayisi INT = @ToplamHareketli - @UrunSayisi;
+
+    SELECT StkId FROM #sonuc ORDER BY StkId;
     PRINT 'sp_Fifo_HareketliUrunListesi: '
         + CAST(@Yil AS VARCHAR) + '-' + RIGHT('0' + CAST(@Ay AS VARCHAR), 2)
         + ' donemi icin '

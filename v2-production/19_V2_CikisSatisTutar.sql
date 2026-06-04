@@ -29,7 +29,7 @@ GO
         h.ehMekan AS MekanId,
         SUM(h.ehAdetN) AS ToplamAdet,
         SUM(h.ehTutarN) AS ToplamTutar
-    FROM DerinSISBkm.dbo.irsHrk h
+    FROM DerinSIS_Local.dbo.irsHrk h
     WHERE h.ehstkID IN (SELECT DISTINCT StkId FROM FifoCikisDetay WHERE SatisTutar IS NULL)
       AND h.ehMekan IN (1, 12, 4477, 4478)
       AND h.ehAltDepo = 0

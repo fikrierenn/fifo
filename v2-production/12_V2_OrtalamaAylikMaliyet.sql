@@ -17,8 +17,8 @@ GO
 
    FIFO ile paralel calisir:
      - Acilis: FifoAcilisEnvanter + FifoKatman agirlikli ort.
-     - Aylik alislar: DerinSISBkm.dbo.fat + fatAyr
-     - Ay sonu stok: DerinSISBkm.dbo.irsHrk
+     - Aylik alislar: DerinSIS_Local.dbo.fat + fatAyr
+     - Ay sonu stok: DerinSIS_Local.dbo.irsHrk
      - Formula: (AyBasiTutar + GirisTutar) / (AyBasiMiktar + GirisMiktar)
 
    PK: (YilAy, StkId) -- FifoKatman gibi lokasyon aggregate
@@ -162,8 +162,8 @@ BEGIN
                 a.ehTutarN * CASE WHEN f.eGC = 0 THEN 1 ELSE -1 END
             )) AS GirisTutar
         INTO #giris
-        FROM DerinSISBkm.dbo.fatAyr a WITH(NOLOCK)
-        JOIN DerinSISBkm.dbo.fat    f WITH(NOLOCK) ON f.eID = a.ehID
+        FROM DerinSIS_Local.dbo.fatAyr a WITH(NOLOCK)
+        JOIN DerinSIS_Local.dbo.fat    f WITH(NOLOCK) ON f.eID = a.ehID
         WHERE f.eTip IN (0, 2)
           AND a.ehAdetN <> 0
           AND f.eTarihS >= CONVERT(smalldatetime, @AyBas)
@@ -183,8 +183,10 @@ BEGIN
             h.ehStkId AS StkId,
             SUM(CONVERT(DECIMAL(18,4), h.ehAdetN)) AS AySonuMiktar
         INTO #aySonu
-        FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
+        FROM DerinSIS_Local.dbo.irsHrk h WITH(NOLOCK)
         WHERE h.ehTrhS <= @AySonu
+          AND h.ehMekan IN (1, 12, 4477, 4478)   -- FIX: FIFO ile ayni mekan havuzu (kural: ortak havuz)
+          AND h.ehAltDepo = 0                      -- FIX: alt depo haric (FIFO acilis ile tutarli)
           AND (@StkId IS NULL OR h.ehStkId = @StkId)
         GROUP BY h.ehStkId
         HAVING SUM(CONVERT(DECIMAL(18,4), h.ehAdetN)) > 0;

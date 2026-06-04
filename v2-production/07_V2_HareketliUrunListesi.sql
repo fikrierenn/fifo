@@ -59,8 +59,8 @@ BEGIN
     IF @DahilSatis = 1
         INSERT INTO #hareketliUrunler (StkId)
         SELECT DISTINCT dt.ehStkId
-        FROM DerinSISBkm.dbo.irsAyr dt WITH(NOLOCK)
-        JOIN DerinSISBkm.dbo.irs bs  WITH(NOLOCK) ON dt.ehID = bs.eID
+        FROM DerinSIS_Local.dbo.irsAyr dt WITH(NOLOCK)
+        JOIN DerinSIS_Local.dbo.irs bs  WITH(NOLOCK) ON dt.ehID = bs.eID
         WHERE bs.eTip   IN (1, 4, 5, 100, 101)
           AND bs.eMekan IN (1, 12, 4477, 4478)
           AND bs.eTarihS >= CONVERT(smalldatetime, @Baslangic)
@@ -70,8 +70,8 @@ BEGIN
     IF @DahilAlis = 1
         INSERT INTO #hareketliUrunler (StkId)
         SELECT DISTINCT a.ehStkId
-        FROM DerinSISBkm.dbo.fatAyr a WITH(NOLOCK)
-        JOIN DerinSISBkm.dbo.fat   f WITH(NOLOCK) ON f.eID = a.ehID
+        FROM DerinSIS_Local.dbo.fatAyr a WITH(NOLOCK)
+        JOIN DerinSIS_Local.dbo.fat   f WITH(NOLOCK) ON f.eID = a.ehID
         WHERE f.eTip   IN (0, 2)
           AND a.ehAdetN <> 0
           AND f.eTarihS >= CONVERT(smalldatetime, @Baslangic)

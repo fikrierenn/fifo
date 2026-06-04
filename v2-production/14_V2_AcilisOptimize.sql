@@ -89,9 +89,9 @@ BEGIN
             d.ehstkID AS StkId,
             SUM(CONVERT(DECIMAL(18,4), d.stok)) AS StokMiktar
         INTO #stoklarMekan
-        FROM DerinSISBkm.dbo.stokSonAltDepo_vw d
+        FROM DerinSIS_Local.dbo.stokSonAltDepo_vw d
         WHERE d.ehAltDepo = 0
-          AND d.ehMekan IN (1, 4477, 4478)
+          AND d.ehMekan IN (1, 12, 4477, 4478)   -- FIX: mekan 12 (ana depo, en buyuk stok) ortak havuza dahil
           AND d.stok > 0
           AND (@StkId IS NULL OR d.ehstkID = @StkId)
         GROUP BY d.ehMekan, d.ehstkID;
@@ -182,18 +182,18 @@ BEGIN
                 )
             ) AS NetTutar
         FROM #stoklar s
-        JOIN DerinSISBkm.dbo.irs i WITH(NOLOCK)
+        JOIN DerinSIS_Local.dbo.irs i WITH(NOLOCK)
             ON i.eTip IN (2,0,10,3,6,102,103)
            AND i.eTarih >  CONVERT(smalldatetime, @baslangicTarihi)
            AND i.eTarih <  DATEADD(DAY, 1, CONVERT(smalldatetime, @EnvanterTarihi))
-           AND i.eMekan IN (1,4477,4478)
-        JOIN DerinSISBkm.dbo.irsAyr ia WITH(NOLOCK)
+           AND i.eMekan IN (1,12,4477,4478)   -- FIX: mekan 12 dahil (ortak havuz kurali)
+        JOIN DerinSIS_Local.dbo.irsAyr ia WITH(NOLOCK)
             ON ia.ehID = i.eID
-        JOIN DerinSISBkm.dbo.fatAyr a WITH(NOLOCK)
+        JOIN DerinSIS_Local.dbo.fatAyr a WITH(NOLOCK)
             ON a.ehIrsID   = i.eID
            AND a.ehIrsSira = ia.ehSira
            AND a.ehStkID   = s.StkId
-        JOIN DerinSISBkm.dbo.fat f WITH(NOLOCK)
+        JOIN DerinSIS_Local.dbo.fat f WITH(NOLOCK)
             ON f.eID = a.ehID
         WHERE a.ehAdetN <> 0
           AND (@StkId IS NULL OR a.ehStkID = @StkId)
@@ -380,18 +380,18 @@ BEGIN
             ) AS NetTutar
         FROM #eksikler e
         LEFT JOIN (SELECT DISTINCT StkId FROM #alislar) v ON v.StkId = e.StkId
-        JOIN DerinSISBkm.dbo.irs i WITH(NOLOCK)
+        JOIN DerinSIS_Local.dbo.irs i WITH(NOLOCK)
             ON i.eTip IN (2,0,10,3,6,102,103)
            AND i.eTarih >  CONVERT(smalldatetime, @baslangicTarihi)
            AND i.eTarih <  DATEADD(DAY, 1, CONVERT(smalldatetime, @EnvanterTarihi))
            AND i.eMekan = 12
-        JOIN DerinSISBkm.dbo.irsAyr ia WITH(NOLOCK)
+        JOIN DerinSIS_Local.dbo.irsAyr ia WITH(NOLOCK)
             ON ia.ehID = i.eID
-        JOIN DerinSISBkm.dbo.fatAyr a WITH(NOLOCK)
+        JOIN DerinSIS_Local.dbo.fatAyr a WITH(NOLOCK)
             ON a.ehIrsID   = i.eID
            AND a.ehIrsSira = ia.ehSira
            AND a.ehStkID   = e.StkId
-        JOIN DerinSISBkm.dbo.fat f WITH(NOLOCK)
+        JOIN DerinSIS_Local.dbo.fat f WITH(NOLOCK)
             ON f.eID = a.ehID
         WHERE a.ehAdetN <> 0
           AND v.StkId IS NULL
@@ -457,7 +457,7 @@ BEGIN
                     PARTITION BY f.fStkID
                     ORDER BY f.fTarihSon DESC, f.fhID DESC
                 ) AS rn
-            FROM DerinSISBkm.bkm.fn_SonGecerliFiyat(@EnvanterTarihi, 1) f
+            FROM DerinSIS_Local.bkm.fn_SonGecerliFiyat(@EnvanterTarihi, 1) f
             WHERE f.sonrakiNet > 0
         )
         SELECT
@@ -565,7 +565,7 @@ BEGIN
                 EOMONTH(h.ehTrhS) AS AyBitis,
                 SUM(CONVERT(DECIMAL(18,4), h.ehAdetN)) AS AyHareket
             INTO #aylikHareket
-            FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
+            FROM DerinSIS_Local.dbo.irsHrk h WITH(NOLOCK)
             JOIN #eksikKalan e ON e.StkId = h.ehstkID
             WHERE h.ehAltDepo = 0
               AND h.ehMekan IN (1, 12, 4477, 4478)
@@ -688,7 +688,7 @@ BEGIN
                             f.fTarihSon DESC,
                             f.fhID DESC
                     ) AS rn
-                FROM DerinSISBkm.bkm.fn_SonGecerliFiyat_Adv(@EnvanterTarihi, 1, 1, 1) f
+                FROM DerinSIS_Local.bkm.fn_SonGecerliFiyat_Adv(@EnvanterTarihi, 1, 1, 1) f
                 WHERE f.sonrakiNet > 0
             ) f
             WHERE f.rn = 1;
@@ -724,7 +724,7 @@ BEGIN
                                 f.fTarihSon DESC,
                                 f.fhID DESC
                         ) AS rn
-                    FROM DerinSISBkm.bkm.fn_SonGecerliFiyat_Adv(@eskiTarih, 1, 1, 1) f
+                    FROM DerinSIS_Local.bkm.fn_SonGecerliFiyat_Adv(@eskiTarih, 1, 1, 1) f
                     WHERE f.sonrakiNet > 0
                       AND f.fStkID NOT IN (SELECT StkId FROM #fiyatMaterialize)
                 ) f

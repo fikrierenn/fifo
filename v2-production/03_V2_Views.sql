@@ -50,7 +50,9 @@ SELECT
     SUM(GirisMiktar) AS ToplamMiktar,
     SUM(KalanMiktar) AS KalanMiktar,
     SUM(GirisMiktar - KalanMiktar) AS TuketilenMiktar,
-    CAST(AVG(BirimMaliyet) AS DECIMAL(18,6)) AS OrtalamaBirimMaliyet,
+    -- FIX: miktar-agirlikli ortalama (eski AVG(BirimMaliyet) = anlamsiz duz ortalama)
+    CASE WHEN SUM(GirisMiktar) = 0 THEN CAST(0 AS DECIMAL(18,6))
+         ELSE CAST(SUM(GirisMiktar * BirimMaliyet) / SUM(GirisMiktar) AS DECIMAL(18,6)) END AS OrtalamaBirimMaliyet,
     MIN(BirimMaliyet) AS MinBirimMaliyet,
     MAX(BirimMaliyet) AS MaxBirimMaliyet
 FROM dbo.FifoKatman

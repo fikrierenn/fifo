@@ -72,7 +72,7 @@ BEGIN
             h.ehStkId AS StkId,
             SUM(CONVERT(DECIMAL(18,4), h.ehAdetN)) AS StokMiktar
         INTO #stoklarMekan
-        FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
+        FROM DerinSIS_Local.dbo.irsHrk h WITH(NOLOCK)
         WHERE h.ehTrhS <= @EnvanterTarihi
           AND h.ehAltDepo = 0
           AND h.ehMekan IN (1, 12, 4477, 4478)
@@ -92,6 +92,12 @@ BEGIN
         GROUP BY StkId;
 
         CREATE INDEX IX_tmp_stoklar_StkId ON #stoklar(StkId);
+
+        /* DEVRE DISI URUNLER: maliyet katmani KURULMAZ (posetler/ambalaj gibi maliyeti 0,
+           alisi gider yazilan kalemler). Envanter snapshot'ta KALIR (#stoklarMekan dokunulmaz). */
+        IF OBJECT_ID('dbo.FifoDevreDisiUrunler', 'U') IS NOT NULL
+            DELETE FROM #stoklar
+            WHERE StkId IN (SELECT StkId FROM dbo.FifoDevreDisiUrunler);
 
         DELETE FROM dbo.FifoAcilisEnvanter
         WHERE EnvanterTarihi = @EnvanterTarihi
@@ -127,9 +133,9 @@ BEGIN
             )) AS netTutar
         INTO #alislar
         FROM #stoklar s
-        JOIN DerinSISBkm.dbo.fatAyr a WITH(NOLOCK)
+        JOIN DerinSIS_Local.dbo.fatAyr a WITH(NOLOCK)
             ON a.ehStkId = s.StkId
-        JOIN DerinSISBkm.dbo.fat f WITH(NOLOCK)
+        JOIN DerinSIS_Local.dbo.fat f WITH(NOLOCK)
             ON f.eID = a.ehID
         WHERE a.ehAdetN <> 0
           AND f.eTarihS >  CONVERT(smalldatetime, @baslangicTarihi)
@@ -275,11 +281,11 @@ BEGIN
         INTO #merkezAlis
         FROM #eksiklar e
         LEFT JOIN (SELECT DISTINCT StkId FROM #alislar) v ON v.StkId = e.StkId
-        JOIN DerinSISBkm.dbo.fatAyr a WITH(NOLOCK)
+        JOIN DerinSIS_Local.dbo.fatAyr a WITH(NOLOCK)
             ON a.ehStkId = e.StkId
-        JOIN DerinSISBkm.dbo.fat f WITH(NOLOCK)
+        JOIN DerinSIS_Local.dbo.fat f WITH(NOLOCK)
             ON f.eID = a.ehID
-        JOIN DerinSISBkm.dbo.irs i WITH(NOLOCK)
+        JOIN DerinSIS_Local.dbo.irs i WITH(NOLOCK)
             ON i.eID = a.ehIrsID
            AND i.eMekan = 12
         WHERE a.ehAdetN <> 0
@@ -338,7 +344,7 @@ BEGIN
                     PARTITION BY f.fStkId
                     ORDER BY f.fTarihSon DESC, f.fhID DESC
                 ) AS rn
-            FROM DerinSISBkm.bkm.fn_SonGecerliFiyat(@EnvanterTarihi, 1) f
+            FROM DerinSIS_Local.bkm.fn_SonGecerliFiyat(@EnvanterTarihi, 1) f
             WHERE f.sonrakiNet > 0
         )
         SELECT
@@ -430,7 +436,7 @@ BEGIN
                 h.ehStkId AS StkId,
                 a.ayBitis,
                 SUM(CONVERT(DECIMAL(18,4), h.ehAdetN)) AS ayStok
-            FROM DerinSISBkm.dbo.irsHrk h WITH(NOLOCK)
+            FROM DerinSIS_Local.dbo.irsHrk h WITH(NOLOCK)
             JOIN #aylar a ON h.ehTrhS <= DATEADD(DAY, 1, a.ayBitis)
             JOIN #eksikKalan e ON e.StkId = h.ehStkId
             WHERE h.ehAltDepo = 0
@@ -522,7 +528,7 @@ BEGIN
                                 f.fTarihSon DESC,
                                 f.fhID DESC
                         ) AS rn
-                    FROM DerinSISBkm.bkm.fn_SonGecerliFiyat_Adv(@matTarih, 1, 1, 1) f
+                    FROM DerinSIS_Local.bkm.fn_SonGecerliFiyat_Adv(@matTarih, 1, 1, 1) f
                     WHERE f.fStkId IN (SELECT StkId FROM #aylikAlloc WHERE ayBitis = @matTarih)
                       AND f.sonrakiNet > 0
                       AND (f.fTarihSon IS NULL OR f.fTarihSon >= @matTarih)
@@ -734,8 +740,8 @@ BEGIN
                 CASE WHEN f.eGC = 0 THEN a.ehTutarN ELSE -1 * a.ehTutarN END
             )) AS netTutar
         INTO #alislar
-        FROM DerinSISBkm.dbo.fatAyr a WITH(NOLOCK)
-        JOIN DerinSISBkm.dbo.fat f WITH(NOLOCK)
+        FROM DerinSIS_Local.dbo.fatAyr a WITH(NOLOCK)
+        JOIN DerinSIS_Local.dbo.fat f WITH(NOLOCK)
             ON f.eID = a.ehID
         WHERE a.ehAdetN <> 0
           AND f.eTarihS >  CONVERT(smalldatetime, @baslangicTarihi)
@@ -874,19 +880,18 @@ BEGIN
 
         SELECT
             ID = IDENTITY(INT,1,1),
-            dt.ehStkId AS StkId,
-            bs.eMekan AS MekanId,
-            CAST(bs.eTarihS AS DATE) AS satisTarihi,
-            netMiktar = SUM(CONVERT(DECIMAL(18,4), dt.ehAdet))
+            h.ehstkID AS StkId,
+            h.ehMekan AS MekanId,
+            CAST(h.ehTrhS AS DATE) AS satisTarihi,
+            netMiktar = SUM(CONVERT(DECIMAL(18,4), h.ehAdetN))
         INTO #satislar
-        FROM DerinSISBkm.dbo.irs bs WITH(NOLOCK)
-        JOIN DerinSISBkm.dbo.irsAyr dt WITH(NOLOCK) ON dt.ehID = bs.eID
-        WHERE bs.eTip IN (1,4,5,100,101)
-          AND bs.eMekan IN (1, 12, 4477, 4478)
-          AND bs.eTarihS >= CONVERT(smalldatetime, @satisBaslangic)
-          AND bs.eTarihS <  DATEADD(DAY, 1, CONVERT(smalldatetime, @satisBitis))
-          AND (@StkId IS NULL OR dt.ehStkId = @StkId)
-        GROUP BY dt.ehStkId, bs.eMekan, CAST(bs.eTarihS AS DATE);
+        FROM DerinSIS_Local.dbo.irsHrk h
+        WHERE h.ehTip IN (1,4,5,100,101)
+          AND h.ehMekan IN (1, 12, 4477, 4478)
+          AND h.ehTrhS >= CONVERT(smalldatetime, @satisBaslangic)
+          AND h.ehTrhS <  DATEADD(DAY, 1, CONVERT(smalldatetime, @satisBitis))
+          AND (@StkId IS NULL OR h.ehstkID = @StkId)
+        GROUP BY h.ehstkID, h.ehMekan, CAST(h.ehTrhS AS DATE);
 
         CREATE INDEX IX_tmp_satislar_StkId
             ON #satislar(StkId, satisTarihi, MekanId, ID);
@@ -1256,6 +1261,29 @@ BEGIN
                 @IslemId = @IslemId,
                 @fallbackSatinalmaSarti = @fallbackSatinalmaSarti,
                 @sabitFallbackBirimMaliyet = @sabitFallbackBirimMaliyet;
+        END
+
+        /* RERUN-SAFE: ALIS katmanlari silinmeden ONCE donem cikislarini geri al + sil.
+           Yoksa sp_Fifo_AlisKatmanEkle'nin "DELETE FROM FifoKatman WHERE KaynakTip='ALIS'"
+           ifadesi, onceki run'in FifoCikisDetay referanslarina takilir
+           (FK_FifoCikisDetay_FifoKatman) ve urun atlanir. Alis(+)->Satis(-) sirasi korunur. */
+        IF @calistirCikis = 1
+        BEGIN
+            UPDATE h SET h.KalanMiktar = h.KalanMiktar + d.toplamCikis
+            FROM dbo.FifoKatman h
+            JOIN (
+                SELECT c.KatmanId, SUM(c.Miktar) AS toplamCikis
+                FROM dbo.FifoCikisDetay c
+                WHERE c.HareketTarihi >= @satisBaslangic
+                  AND c.HareketTarihi <= @satisBitis
+                  AND (@StkId IS NULL OR c.StkId = @StkId)
+                GROUP BY c.KatmanId
+            ) d ON d.KatmanId = h.KatmanId;
+
+            DELETE FROM dbo.FifoCikisDetay
+            WHERE HareketTarihi >= @satisBaslangic
+              AND HareketTarihi <= @satisBitis
+              AND (@StkId IS NULL OR StkId = @StkId);
         END
 
         IF @calistirAlis = 1

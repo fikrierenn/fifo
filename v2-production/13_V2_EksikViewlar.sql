@@ -75,8 +75,20 @@ SELECT
         AS DECIMAL(18,2))
     END AS FarkYuzdesi
 FROM dbo.OrtalamaAylikMaliyet o
-LEFT JOIN dbo.vw_Fifo_AySonuBirimMaliyet f
-    ON f.StkId = o.StkId;
+-- FIX: FIFO tarafi StkId basina TEK satira toplanir (eski hali GirisTarihi'ne grupluydu
+--      -> StkId basina N satir -> StkId-only JOIN kartezyen carpim yapiyordu).
+LEFT JOIN (
+    SELECT
+        StkId,
+        SUM(KalanMiktar) AS StokMiktar,
+        CASE WHEN SUM(KalanMiktar) = 0 THEN CAST(0 AS DECIMAL(18,6))
+             ELSE CAST(SUM(KalanMiktar * BirimMaliyet) / SUM(KalanMiktar) AS DECIMAL(18,6)) END AS BirimMaliyet,
+        CAST(SUM(KalanMiktar * BirimMaliyet) AS DECIMAL(18,4)) AS Tutar
+    FROM dbo.FifoKatman
+    WHERE KalanMiktar > 0
+    GROUP BY StkId
+) f ON f.StkId = o.StkId;
+-- NOT: FIFO aylik snapshot tutmuyor -> her YilAy, GUNCEL FIFO stok maliyetiyle karsilastirilir.
 GO
 
 PRINT 'vw_MaliyetKarsilastirma olusturuldu';
