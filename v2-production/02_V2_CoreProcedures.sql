@@ -854,6 +854,13 @@ BEGIN
             GROUP BY c.KatmanId
         ) d ON d.KatmanId = h.KatmanId;
 
+        -- RERUN-SAFE: Onceki calismadan kalan IADE katmanlarini sil (rerun'da birikmemeli)
+        DELETE FROM dbo.FifoKatman
+        WHERE KaynakTip = 'IADE'
+          AND GirisTarihi >= @satisBaslangic
+          AND GirisTarihi <= @satisBitis
+          AND (@StkId IS NULL OR StkId = @StkId);
+
         /* 1) Havuzdaki tum katmanlari al */
         IF OBJECT_ID('tempdb..#katman', 'U') IS NOT NULL DROP TABLE #katman;
 
@@ -868,7 +875,7 @@ BEGIN
         FROM dbo.FifoKatman h
         WHERE h.GirisTarihi <= @satisBitis
           -- Only include sources that are actually written by this deployment.
-          AND h.KaynakTip IN ('ACILIS','ACILIS_TAMAMLA','ALIS','AYLIK_DEVIR','SENTETIK_ALIS')
+          AND h.KaynakTip IN ('ACILIS','ACILIS_TAMAMLA','ALIS','AYLIK_DEVIR','SENTETIK_ALIS','IADE')
           AND h.KalanMiktar > 0
           AND (@StkId IS NULL OR h.StkId = @StkId);
 
@@ -926,7 +933,7 @@ BEGIN
         CREATE INDEX IX_tmp_katmanCum_StkId
             ON #katmanCum(StkId, layerCumStart, layerCumEnd);
 
-        /* 4) Satislar icin kumulatif */
+        /* 4) Satislar icin kumulatif (sadece net satis = netMiktar < 0) */
         IF OBJECT_ID('tempdb..#satisCum', 'U') IS NOT NULL DROP TABLE #satisCum;
 
         SELECT
@@ -942,7 +949,7 @@ BEGIN
             ) - ABS(s.netMiktar)
         INTO #satisCum
         FROM #satislar s
-        WHERE s.netMiktar <> 0;
+        WHERE s.netMiktar < 0;  -- iade (netMiktar > 0) FIFO kesisimine girmiyor
 
         CREATE INDEX IX_tmp_satisCum_StkId
             ON #satisCum(StkId, satisCumStart, satisCumEnd);
@@ -974,6 +981,93 @@ BEGIN
          AND c.satisCumEnd > l.layerCumStart;
 
         DELETE FROM #cikisDetay WHERE cikisMiktar <= 0;
+
+        /* 6a) IADE KATMANI AC (netMiktar > 0 = stok geri donuyor)
+               Mantik: en son satisten geriye FIFO gibi, iade miktarini karsilayana kadar.
+               Her segment icin ayri FifoKatman satirı (o segmentin BirimMaliyet'i). */
+
+        -- Iade hareketleri (gun+mekan bazinda net pozitif)
+        IF OBJECT_ID('tempdb..#iade_hrk', 'U') IS NOT NULL DROP TABLE #iade_hrk;
+        SELECT
+            ID        = IDENTITY(INT,1,1),
+            s.StkId,
+            s.MekanId,
+            iadeTarihi = s.satisTarihi,
+            iadeMiktar = s.netMiktar
+        INTO #iade_hrk
+        FROM #satislar s
+        WHERE s.netMiktar > 0;
+
+        -- Iade kumulatif (StkId bazinda)
+        IF OBJECT_ID('tempdb..#iade_cum', 'U') IS NOT NULL DROP TABLE #iade_cum;
+        SELECT
+            i.ID, i.StkId, i.MekanId, i.iadeTarihi, i.iadeMiktar,
+            iadeCumEnd   = SUM(i.iadeMiktar) OVER (PARTITION BY i.StkId ORDER BY i.iadeTarihi, i.MekanId, i.ID),
+            iadeCumStart = SUM(i.iadeMiktar) OVER (PARTITION BY i.StkId ORDER BY i.iadeTarihi, i.MekanId, i.ID) - i.iadeMiktar
+        INTO #iade_cum
+        FROM #iade_hrk i;
+
+        -- Satis cikislari: bu SP'nin #cikisDetay'indan al (FifoCikisDetay henuz yazilmamis olabilir)
+        -- Her iade icin kendi tarihine kadar, en yeniden eskiye, kumulatif
+        IF OBJECT_ID('tempdb..#satis_katman', 'U') IS NOT NULL DROP TABLE #satis_katman;
+        SELECT
+            ic.ID AS iadeID,
+            cd.StkId, cd.satisTarihi AS HareketTarihi, cd.BirimMaliyet,
+            cd.cikisMiktar AS Miktar,
+            layerCumEnd   = SUM(cd.cikisMiktar) OVER (
+                PARTITION BY cd.StkId, ic.ID
+                ORDER BY cd.satisTarihi DESC, cd.satisID DESC, cd.KatmanId DESC),
+            layerCumStart = SUM(cd.cikisMiktar) OVER (
+                PARTITION BY cd.StkId, ic.ID
+                ORDER BY cd.satisTarihi DESC, cd.satisID DESC, cd.KatmanId DESC
+            ) - cd.cikisMiktar
+        INTO #satis_katman
+        FROM #iade_hrk ic
+        JOIN #cikisDetay cd
+          ON cd.StkId        = ic.StkId
+         AND cd.satisTarihi <= ic.iadeTarihi;
+
+        -- FIFO kesisim: iade miktari <-> satis katmanlari (en yeniden, tarih filtreli)
+        IF OBJECT_ID('tempdb..#iade_kesisim', 'U') IS NOT NULL DROP TABLE #iade_kesisim;
+        SELECT
+            ic.StkId, ic.MekanId, ic.iadeTarihi,
+            sk.BirimMaliyet,
+            kesisenMiktar = CAST(
+                CASE
+                    WHEN sk.layerCumEnd <= ic.iadeCumStart
+                      OR ic.iadeCumEnd <= sk.layerCumStart THEN 0
+                    ELSE
+                        (CASE WHEN sk.layerCumEnd < ic.iadeCumEnd
+                              THEN sk.layerCumEnd ELSE ic.iadeCumEnd END)
+                      - (CASE WHEN sk.layerCumStart > ic.iadeCumStart
+                              THEN sk.layerCumStart ELSE ic.iadeCumStart END)
+                END AS DECIMAL(18,4))
+        INTO #iade_kesisim
+        FROM #iade_cum ic
+        JOIN #satis_katman sk
+          ON sk.StkId   = ic.StkId
+         AND sk.iadeID  = ic.ID
+         AND sk.layerCumEnd  > ic.iadeCumStart
+         AND ic.iadeCumEnd   > sk.layerCumStart;
+
+        DELETE FROM #iade_kesisim WHERE kesisenMiktar <= 0;
+
+        -- Karsilanamayan iade miktari icin fallback (sifir maliyet yerine 0 koyma, log icin)
+        -- TODO: FifoSorunluStoklar'a 'IADE_KARSILANAMADI' eklenebilir
+
+        INSERT INTO dbo.FifoKatman
+            (StkId, KaynakTip, GirisTarihi, BelgeTarihi, BelgeNo,
+             GirisMiktar, KalanMiktar, BirimMaliyet)
+        SELECT
+            ik.StkId,
+            'IADE',
+            ik.iadeTarihi,
+            ik.iadeTarihi,
+            NULL,
+            ik.kesisenMiktar,
+            ik.kesisenMiktar,
+            ik.BirimMaliyet
+        FROM #iade_kesisim ik;
 
         /* 6) YETERSIZ STOK KONTROLU */
         DELETE FROM dbo.FifoSorunluStoklar
@@ -1020,7 +1114,7 @@ BEGIN
              KatmanTarihi, KatmanBelgeNo, Miktar, BirimMaliyet)
         SELECT
             d.StkId, d.satisTarihi,
-            CASE WHEN d.satirNetMiktar < 0 THEN 'SATIS' ELSE 'IADE' END,
+            'SATIS',
             d.satisMekanId,
             d.KatmanId, d.KatmanTarihi, d.girisBelgeNo,
             d.cikisMiktar, d.BirimMaliyet
