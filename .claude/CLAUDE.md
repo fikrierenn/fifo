@@ -4,6 +4,18 @@
 > Agent göreve göre ilgili dosyayı okur, tamamını yüklemez.
 > Session sonunda bu dosyadaki SON DURUM bölümünü güncelle.
 
+## SON DURUM (2026-06-06 #6)
+- **OCAK 2026 KARLILIK HESAPLANDI + RAPORLANDI.** Commit `32f46ee`.
+- **SatisTutar SP'ye eklendi**: `sp_Fifo_CikisMaliyetle` FifoCikisDetay.SatisTutar dolduruyor (irsHrk geliri ehTutarN, ehTip 1,4,5,100,101, miktar oranli dagitim). Deploy+re-run yapildi.
+- **Ocak 2026**: Gelir 72.28M · Maliyet 46.88M · **Brut kar 25.40M · marj %35.14**. Magaza 4477/1/4478 ~%38, mekan-12 (ana depo) %4.47. Rapor: `raporlar/Ocak2026_Karlilik_Raporu.md` + `Ocak2026_UrunMagaza_Karlilik.csv` (89.189 satir).
+- **FIYAT_YOK 1395→871**: lokal fytOzl seed (2022'de kesik) canlidan 6.6M satir tamamlandi → 524 urun fiyat kazandi. Kalan 871 = kaynakta da fiyatsiz.
+- **UrunBilgi lokale cekildi**: `DerinSIS_Local.dbo.UrunBilgi` (853k satir, isim/kategori — artik canliya gitme).
+- **9 non-inventory devre-disina eklendi** (gozle dogrulanmis §3; isim-pattern+KatAna ikisi de tek basina guvenilmez). Karne Hediyesi/Okapi TASINMADI (gercek urun).
+- **COST ANOMALI**: Okapi Kalem Çantası BirimMaliyet 2936 vs satis 299 → ERP SonAlis hatasi (koli/qty), FIFO dogru. Fix beklemede (ManuelMaliyet override).
+- **irs minimal seed**: disk temizliginde DROP edilen `DerinSIS_Local.dbo.irs` acilis SP'sini patlatti → eID+eMekan (eMekan=12, 6.9M) geri kuruldu.
+- **sqlcli lokale kopyalandi** (`fifo/sqlcli/`, gitignore) + sqlcli.json BT-FIKRI'ye cekildi.
+- **Siradaki**: (1) Okapi cost override (ManuelMaliyet), (2) eski 8 devre-disi sebep §2-aykiri gozden gecir, (3) 677 kalan FIYAT_YOK ayir.
+- ---- onceki #5 (referans) ----
 ## SON DURUM (2026-06-03 #5)
 - **HANDOFF (akşam)**: Sabah **FIFO'ya devam**. Diğer işler (commit/Express teardown) bekleyebilir. Bu oturum: migration + disk temizliği bitti.
 - **DISK TEMİZLİĞİ**: C **0→35GB** (recycle 8.3GB + SQLEXPRESS tempdb 4.7GB shrink + temp). D **+6.8GB** (D:\blobs = orphan Ollama LLM modelleri silindi). Kalan büyükler dokunulmadı: Rapor.pst 13.5GB (email arşiv), SQLData ~10GB (DB), Belgelerim\Masaüstü 6GB. Yeni tool: `tools/disk-temizle.ps1` (dry-run default, `-Apply` siler; C+D + 3 instance tempdb; .NET enum hızlı).
