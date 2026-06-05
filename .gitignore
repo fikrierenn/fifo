@@ -19,6 +19,7 @@ app/appsettings.Production.json
 hangfire/appsettings.Development.json
 hangfire/appsettings.Production.json
 sqlcli.json
+sqlcli/
 
 # SQL deploy output logs (may contain sensitive data, regenerate on deploy)
 v2-production/*.out

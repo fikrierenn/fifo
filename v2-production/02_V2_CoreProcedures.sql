@@ -890,7 +890,8 @@ BEGIN
             h.ehstkID AS StkId,
             h.ehMekan AS MekanId,
             CAST(h.ehTrhS AS DATE) AS satisTarihi,
-            netMiktar = SUM(CONVERT(DECIMAL(18,4), h.ehAdetN))
+            netMiktar = SUM(CONVERT(DECIMAL(18,4), h.ehAdetN)),
+            netTutar  = SUM(CONVERT(DECIMAL(18,4), h.ehTutarN))
         INTO #satislar
         FROM DerinSIS_Local.dbo.irsHrk h
         WHERE h.ehTip IN (1,4,5,100,101)
@@ -1110,15 +1111,18 @@ BEGIN
           AND (@StkId IS NULL OR StkId = @StkId);
 
         INSERT INTO dbo.FifoCikisDetay
-            (StkId, HareketTarihi, HareketTipi, MekanId, KatmanId, 
-             KatmanTarihi, KatmanBelgeNo, Miktar, BirimMaliyet)
+            (StkId, HareketTarihi, HareketTipi, MekanId, KatmanId,
+             KatmanTarihi, KatmanBelgeNo, Miktar, BirimMaliyet, SatisTutar)
         SELECT
             d.StkId, d.satisTarihi,
             'SATIS',
             d.satisMekanId,
             d.KatmanId, d.KatmanTarihi, d.girisBelgeNo,
-            d.cikisMiktar, d.BirimMaliyet
-        FROM #cikisDetay d;
+            d.cikisMiktar, d.BirimMaliyet,
+            /* Gunun satis geliri (irsHrk ehTutarN) cikis segmentine miktar oraninda dagitilir */
+            CAST(d.cikisMiktar * (s.netTutar / NULLIF(ABS(s.netMiktar), 0)) AS DECIMAL(18,4))
+        FROM #cikisDetay d
+        JOIN #satislar s ON s.ID = d.satisID;
 
         /* 8) KATMAN KALAN MIKTARLARINI GUNCELLE */
         UPDATE h
@@ -1135,7 +1139,7 @@ BEGIN
         
         SELECT
             StkId, HareketTarihi, HareketTipi, MekanId, KatmanId,
-            KatmanTarihi, KatmanBelgeNo, Miktar, BirimMaliyet, CikisTutar
+            KatmanTarihi, KatmanBelgeNo, Miktar, BirimMaliyet, CikisTutar, SatisTutar
         FROM dbo.FifoCikisDetay
         WHERE HareketTarihi >= @satisBaslangic
           AND HareketTarihi <= @satisBitis
