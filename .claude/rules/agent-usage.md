@@ -22,6 +22,8 @@
 | Silent failure / error handling (C#/Razor + SP) | `silent-failure-hunter` | opus |
 | Build derle + hata/uyarı say (fifo.sln) | `build-validator` | haiku |
 | v2-production şema ↔ canlı/lokal DB farkı (sqlcli) | `db-schema-checker` | haiku |
+| FIFO↔ERP mutabakat (STOK_YETERSIZ/sıfır maliyet/IADE/C8 fark) | `maliyet-stok-uzman` | opus |
+| Sorunlu ürün tek tek inceleme + sınıflandırma (FIYAT_YOK/cost anomali/non-inventory) | `sorunlu-urun-dedektif` | opus |
 | Hiçbiri uymuyor (genel çok-adımlı) | `general-purpose` | işe göre elle ata |
 
 > Operax'ta olup fifo'da OLMAYAN (kasıtlı): `pgsql-porter` (PostgreSQL yok), `commit-splitter`, `code-architect`, `code-reviewer`, `reference-researcher`, `security-reviewer`, `test-runner`. Gerekirse eklenir; körlemesine port edilmedi.
