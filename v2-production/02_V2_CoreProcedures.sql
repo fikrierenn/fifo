@@ -635,6 +635,29 @@ BEGIN
         FROM #eksiklar e
         WHERE e.eksikMiktar > 0 AND e.toplamAcilisMiktar > 0;
 
+        /* NET GUVENLIK AGI (invariant): acilis envanterine giren her StkId
+           YA bir FifoKatman almali YA da bir sorun kaydi. Aylik-devir bloku
+           atlanirsa (@atlamaAylikDevir=1) veya eslik/eksik kenar durumlarinda
+           urun sessizce dusebiliyordu (ne katman ne FIYAT_YOK). Bu net dogrudan
+           FifoKatman'a karsi dogrular — aylik-devir durumundan bagimsiz.
+           Ref: sorunlu-urun-dedektif + sql-sp-reviewer CRIT-1 (2026-06-06). */
+        INSERT INTO dbo.FifoSorunluStoklar
+            (StkId, EnvanterTarihi, StokMiktar, SorunTipi, Aciklama)
+        SELECT s.StkId, @EnvanterTarihi, s.StokMiktar, 'FIYAT_YOK',
+               'Acilis envanteri var; alis/merkez/sart/aylik-devir hicbiri katman kuramadi (net guvenlik agi).'
+        FROM #stoklar s
+        WHERE (@StkId IS NULL OR s.StkId = @StkId)
+          AND NOT EXISTS (
+              SELECT 1 FROM dbo.FifoKatman k
+              WHERE k.StkId = s.StkId
+                AND k.GirisTarihi BETWEEN @baslangicTarihi AND @EnvanterTarihi
+          )
+          AND NOT EXISTS (
+              SELECT 1 FROM dbo.FifoSorunluStoklar fs
+              WHERE fs.StkId = s.StkId AND fs.EnvanterTarihi = @EnvanterTarihi
+                AND fs.SorunTipi IN ('FIYAT_YOK','ALIS_YOK')
+          );
+
         IF @IslemId IS NOT NULL
             EXEC dbo.sp_MaliyetAdimYaz @IslemId, @AdimKodu, @AdimAdi, @SiraNo, 'TAMAMLANDI', NULL;
 
