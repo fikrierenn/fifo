@@ -4,18 +4,17 @@
 > Agent göreve göre ilgili dosyayı okur, tamamını yüklemez.
 > Session sonunda bu dosyadaki SON DURUM bölümünü güncelle.
 
-## SON DURUM (2026-06-06 #6)
-- **OCAK 2026 KARLILIK HESAPLANDI + RAPORLANDI.** Commit `32f46ee`.
-- **SatisTutar SP'ye eklendi**: `sp_Fifo_CikisMaliyetle` FifoCikisDetay.SatisTutar dolduruyor (irsHrk geliri ehTutarN, ehTip 1,4,5,100,101, miktar oranli dagitim). Deploy+re-run yapildi.
-- **Ocak 2026**: Gelir 72.28M · Maliyet 46.88M · **Brut kar 25.40M · marj %35.14**. Magaza 4477/1/4478 ~%38, mekan-12 (ana depo) %4.47. Rapor: `raporlar/Ocak2026_Karlilik_Raporu.md` + `Ocak2026_UrunMagaza_Karlilik.csv` (89.189 satir).
-- **FIYAT_YOK 1395→871**: lokal fytOzl seed (2022'de kesik) canlidan 6.6M satir tamamlandi → 524 urun fiyat kazandi. Kalan 871 = kaynakta da fiyatsiz.
-- **UrunBilgi lokale cekildi**: `DerinSIS_Local.dbo.UrunBilgi` (853k satir, isim/kategori — artik canliya gitme).
-- **9 non-inventory devre-disina eklendi** (gozle dogrulanmis §3; isim-pattern+KatAna ikisi de tek basina guvenilmez). Karne Hediyesi/Okapi TASINMADI (gercek urun).
-- **COST ANOMALI**: Okapi Kalem Çantası BirimMaliyet 2936 vs satis 299 → ERP SonAlis hatasi (koli/qty), FIFO dogru. Fix beklemede (ManuelMaliyet override).
-- **irs minimal seed**: disk temizliginde DROP edilen `DerinSIS_Local.dbo.irs` acilis SP'sini patlatti → eID+eMekan (eMekan=12, 6.9M) geri kuruldu.
-- **sqlcli lokale kopyalandi** (`fifo/sqlcli/`, gitignore) + sqlcli.json BT-FIKRI'ye cekildi.
-- **Siradaki**: (1) Okapi cost override (ManuelMaliyet), (2) eski 8 devre-disi sebep §2-aykiri gozden gecir, (3) 677 kalan FIYAT_YOK ayir.
-- ---- onceki #5 (referans) ----
+## SON DURUM (2026-06-06 #7)
+- **OCAK 2026 TAM TEMIZLIK + KARLILIK rev2.** Son commit `fd1ace4`. 10 commit bu oturum.
+- **Karlilik rev2**: Gelir 72.27M · Maliyet 46.69M · **Brut kar 25.58M · marj %35.40**. Rapor `raporlar/Ocak2026_Karlilik_Raporu.md` (rev2) + CSV 89.197 satir (isim kolonlu). Magaza 4477 %37.4 / 1 %38.2 / 4478 %38.1 / depo-12 %6.9.
+- **SP BUG FIX (CRIT-1) — acilis sessiz veri kaybi**: acilis envanteri olan urun, aylik-devir atlanir/kenar durumda NE katman NE FIYAT_YOK aliyordu (sessiz kayip). COMMIT oncesi invariant net guvenlik agi eklendi (02 `385eb44` + 14 `34fea7a`). Re-run: FIYAT_YOK 251→619 = net ~368 GIZLI urunu gorunur yapti.
+- **FIYAT_YOK 1395→619**: fytOzl seed (6.6M) + 605 fallback fiyat (FifoFallbackFiyatlari 'DEVIR_FALLBACK': SonAlis veya SatisFiyat*0.65 tahmin) + net fix. Kalan 619 kaynakta fiyatsiz.
+- **31 non-inventory devre-disi** (6+8+ekler; gelir/gider kalemi, hediye ceki, demirbas/sabit kiymet, posetler). DERS §3: isim-pattern + KatAna='Tanımsız' ikisi de tek basina gercek urunu yanlis yakalar — gozle dogrula.
+- **14 cost-anomali ManuelMaliyet override** (`b8cafa9`): Okapi×4 (2936→194) + 10. ManuelMaliyet eskiden ORPHAN'di → acilis SP'ye en yuksek oncelikli kaynak olarak baglandi (CROSS APPLY). Negatif marj 73→58. Karne Hediyesi HARIC (geliri 0.01 kasitli promo).
+- **02↔14 tarih-penceresi hizalandi** (`bec5bb7`, karar 02→14): stale fiyat KABUL.
+- **2 yeni ajan**: `maliyet-stok-uzman` + `sorunlu-urun-dedektif` (her ikisi opus, salt-okuma). `19_V2_DevreDisi_Fallback_Seed.sql` idempotent seed (devre-disi + fallback + manuel maliyet).
+- **Siradaki (fatura verisi bekliyor — otonom YOK)**: (1) 58 B-grubu negatif marj tek tek fatura teyidi, (2) 565 fallback + 14 override TAHMIN degerleri gercek fatura koli adediyle guncelle, (3) C1-C4 ✅ stabil.
+- ---- onceki #6/#5 (referans) ----
 ## SON DURUM (2026-06-03 #5)
 - **HANDOFF (akşam)**: Sabah **FIFO'ya devam**. Diğer işler (commit/Express teardown) bekleyebilir. Bu oturum: migration + disk temizliği bitti.
 - **DISK TEMİZLİĞİ**: C **0→35GB** (recycle 8.3GB + SQLEXPRESS tempdb 4.7GB shrink + temp). D **+6.8GB** (D:\blobs = orphan Ollama LLM modelleri silindi). Kalan büyükler dokunulmadı: Rapor.pst 13.5GB (email arşiv), SQLData ~10GB (DB), Belgelerim\Masaüstü 6GB. Yeni tool: `tools/disk-temizle.ps1` (dry-run default, `-Apply` siler; C+D + 3 instance tempdb; .NET enum hızlı).
