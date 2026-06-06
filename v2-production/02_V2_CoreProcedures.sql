@@ -636,6 +636,23 @@ BEGIN
         FROM #eksiklar e
         WHERE e.eksikMiktar > 0 AND e.toplamAcilisMiktar > 0;
 
+        /* MANUEL MALIYET OVERRIDE: kullanici elle girdigi birim maliyet hesaplanani EZER
+           (ERP koli/qty hatasi vb. duzeltme). FifoManuelMaliyet en yuksek oncelikli kaynak.
+           Bu run'da kurulan tum katmanlara (ACILIS/ACILIS_TAMAMLA/AYLIK_DEVIR) uygulanir.
+           Ref: cost-anomali fix (2026-06-06). */
+        UPDATE k SET k.BirimMaliyet = mm.BirimMaliyet
+        FROM dbo.FifoKatman k
+        CROSS APPLY (
+            SELECT TOP 1 m.BirimMaliyet
+            FROM dbo.FifoManuelMaliyet m
+            WHERE m.StkId = k.StkId AND m.Aktif = 1
+              AND m.GecerliBaslangic <= @EnvanterTarihi
+              AND (m.GecerliBitis IS NULL OR m.GecerliBitis >= @EnvanterTarihi)
+            ORDER BY m.GecerliBaslangic DESC, m.ManuelId DESC
+        ) mm
+        WHERE k.GirisTarihi <= @EnvanterTarihi
+          AND (@StkId IS NULL OR k.StkId = @StkId);
+
         /* NET GUVENLIK AGI (invariant): acilis envanterine giren her StkId
            YA bir FifoKatman almali YA da bir sorun kaydi. Aylik-devir bloku
            atlanirsa (@atlamaAylikDevir=1) veya eslik/eksik kenar durumlarinda

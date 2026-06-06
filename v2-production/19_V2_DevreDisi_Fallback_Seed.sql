@@ -60,4 +60,25 @@ WHERE (u.SonAlis > 0 OR u.SatisFiyat > 0)
   AND NOT EXISTS (SELECT 1 FROM dbo.FifoFallbackFiyatlari ff
                   WHERE ff.StkId = fy.StkId AND ff.SatinalmaSarti = 'DEVIR_FALLBACK' AND ff.MekanId = 0);
 
-PRINT 'Devre-disi + fallback seed tamamlandi. Acilis re-run icin @fallbackSatinalmaSarti=''DEVIR_FALLBACK''.';
+/* ---------- 3) COST ANOMALI — MANUEL MALIYET OVERRIDE ----------
+   ERP SonAlis koli/qty hatasi olan urunler (BirimMaliyet >> SatisFiyat).
+   Acilis SP'si FifoManuelMaliyet'i en yuksek oncelikli kaynak olarak ezer.
+   Tahmin = SatisFiyat*0.65; gercek fatura koli teyidi sonrasi guncellenecek.
+   Karne Hediyesi (200772) HARIC — anomalisi gelir tarafi (SatisFiyat=0.01 kasitli). */
+;WITH anomali AS (
+  SELECT v.StkId FROM (VALUES
+    (1690718),(1690719),(1690720),(1690721), -- Okapi Kalem Cantasi x4
+    (1559504),(1627067),(500233),(259297),(1607635),
+    (1628142),(1648583),(175537),(203436),(153251)
+  ) v(StkId)
+)
+INSERT INTO dbo.FifoManuelMaliyet (StkId, BirimMaliyet, GecerliBaslangic, GecerliBitis, Aciklama, EkleyenKullanici, Aktif)
+SELECT a.StkId, CAST(u.SatisFiyat * 0.65 AS DECIMAL(18,6)), '2025-12-31', NULL,
+       N'Cost anomali (ERP SonAlis koli/qty hatasi). Tahmin=SatisFiyat*0.65, fatura teyidi sonrasi guncelle.',
+       'claude-dedektif', 1
+FROM anomali a
+JOIN DerinSIS_Local.dbo.UrunBilgi u ON u.stkID = a.StkId
+WHERE u.SatisFiyat > 0
+  AND NOT EXISTS (SELECT 1 FROM dbo.FifoManuelMaliyet m WHERE m.StkId = a.StkId AND m.Aktif = 1);
+
+PRINT 'Devre-disi + fallback + manuel-maliyet seed tamamlandi. Acilis re-run: @fallbackSatinalmaSarti=''DEVIR_FALLBACK''.';
