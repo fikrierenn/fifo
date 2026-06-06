@@ -531,7 +531,8 @@ BEGIN
                     FROM DerinSIS_Local.bkm.fn_SonGecerliFiyat_Adv(@matTarih, 1, 1, 1) f
                     WHERE f.fStkId IN (SELECT StkId FROM #aylikAlloc WHERE ayBitis = @matTarih)
                       AND f.sonrakiNet > 0
-                      AND (f.fTarihSon IS NULL OR f.fTarihSon >= @matTarih)
+                      -- 14_V2 ile hizalandi (2026-06-06): stale fiyat KABUL edilir.
+                      -- (Eski fTarihSon>=@matTarih reddi kaldirildi — iki SP ayni sonucu versin.)
                 ) f WHERE f.rn = 1;
                 FETCH NEXT FROM matCur INTO @matTarih;
             END
