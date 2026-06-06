@@ -838,6 +838,27 @@ BEGIN
         FROM #eksikler e
         WHERE e.EksikMiktar > 0 AND e.ToplamAcilisMiktar > 0;
 
+        /* NET GUVENLIK AGI (invariant) — 02_V2 ile ayni: acilis envanterine
+           giren her StkId YA FifoKatman YA sorun kaydi almali. Aylik-devir
+           bloku atlanir/kenar durumda urun sessizce dusebiliyordu.
+           Dogrudan FifoKatman'a karsi dogrular, idempotent.
+           Ref: sql-sp-reviewer CRIT-1 (2026-06-06). */
+        INSERT INTO dbo.FifoSorunluStoklar
+            (StkId, EnvanterTarihi, StokMiktar, SorunTipi, Aciklama)
+        SELECT s.StkId, @EnvanterTarihi, s.StokMiktar, 'FIYAT_YOK',
+               'Acilis envanteri var; hicbir kaynak katman kuramadi (net guvenlik agi V2).'
+        FROM #stoklar s
+        WHERE (@StkId IS NULL OR s.StkId = @StkId)
+          AND NOT EXISTS (
+              SELECT 1 FROM dbo.FifoKatman k
+              WHERE k.StkId = s.StkId AND k.GirisTarihi <= @EnvanterTarihi
+          )
+          AND NOT EXISTS (
+              SELECT 1 FROM dbo.FifoSorunluStoklar fs
+              WHERE fs.StkId = s.StkId AND fs.EnvanterTarihi = @EnvanterTarihi
+                AND fs.SorunTipi IN ('FIYAT_YOK','ALIS_YOK')
+          );
+
         IF @IslemId IS NOT NULL
             EXEC dbo.sp_MaliyetAdimYaz @IslemId=@IslemId, @AdimKodu=@stepKey, @AdimAdi=@stepName, @SiraNo=@stepOrder, @Durum='TAMAMLANDI', @Mesaj=NULL;
         PRINT '      Sorun kayitlari tamamlandi. Sure: ' +
