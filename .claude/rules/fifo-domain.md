@@ -30,6 +30,13 @@
 - ETL: `sqlcli copy --from <canlı> --to <lokal> --query ... --table ... --truncate` (cross-server SqlBulkCopy). sqlcli **D:/Dev/sqlcli'da** geliştirilir, fifo'ya kopyalanmaz.
 - Scope: yıl **2026**, devir **2025-12-31**.
 
+## 6. FİYAT 0 OLAMAZ — sıfır maliyet KESİNLİKLE yasak (kullanıcı kuralı 2026-06-19)
+- **Hiçbir FifoKatman.BirimMaliyet = 0 (veya <0) kalamaz.** Stoğu olan her katman gerçek/fallback POZİTİF maliyet taşımalı. 0 maliyet = sessiz yanlış kâr (marj %100 görünür) → CFO raporunu bozar.
+- **Kök neden (doğrulandı 19.06):** açılış tamamlama (`ACILIS_TAMAMLA`/Durum=`TAMAMLAMA`) "son alış"ı seçerken **0-değerli fatura satırını** (numune/hediye/düzeltme irsaliyesi — `ehTutarN=0`) kabul edip 0 kopyalıyor; aynı ürünün fatAyr'da sıfırdan farklı gerçek fiyatı VARKEN (10/12 vakada vardı: 24.65/80.64/77.60…) onu atlıyor.
+- **Fix kuralı:** fallback/tamamlama fiyat seçimi DAİMA `ehAdetN<>0 AND ehTutarN<>0` (birim fiyat>0) ile filtrelenir — **0 fiyatlı kaynak "bulunamadı" sayılır, sonraki kademeye geçilir** (son alış → merkez → son geçerli satış → aylık devir → sabit). Hiçbir kademe pozitif bulamazsa `SABIT_FIYAT_TAMAMLAMA` (>0) veya `ManuelMaliyet` zorunlu; FIYAT_YOK/0 BIRAKILMAZ.
+- **Doğrulama (rerun sonrası ZORUNLU geçer):** `SELECT COUNT(*) FROM FifoKatman WHERE BirimMaliyet<=0` → **0 dönmeli**. Aynı şekilde `FifoCikisDetay WHERE BirimMaliyet<=0` → 0. `/fifo-dogrula` C6 bu kapıyı kontrol eder.
+- Gerçekten hiç fiyatı olmayan ürün (örn. 67903, 50911 — fatAyr'da nonzero yok) → kategori imputation veya elle ManuelMaliyet; 0 değil.
+
 ## İlişkili
 - `memory/fifo_logic_findings.md` — bulgular + kanıt
 - `memory/local_demo_env.md` — ortam durumu

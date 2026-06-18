@@ -338,6 +338,7 @@ BEGIN
                     ORDER BY a.GirisTarihi DESC, a.BelgeNo DESC
                 ) AS rn
             FROM #alislar a
+            WHERE a.BirimMaliyet > 0   -- FIYAT 0 OLAMAZ (fifo-domain §6, 2026-06-19): 0-degerli son-alis (numune/duzeltme fatAyr.ehTutarN=0) atlanir, en son NONZERO alis secilir
         )
         INSERT INTO dbo.FifoKatman
             (StkId, GirisTarihi, KaynakTip, BelgeNo, BelgeTarihi, FirmaId,
@@ -422,6 +423,7 @@ BEGIN
                     ORDER BY m.GirisTarihi DESC, m.BelgeNo DESC
                 ) AS rn
             FROM #merkezAlis m
+            WHERE m.BirimMaliyet > 0   -- FIYAT 0 OLAMAZ (fifo-domain §6, 2026-06-19): 0-degerli merkez-alis atlanir, en son NONZERO merkez alisi secilir
         )
         SELECT
             StkId, GirisTarihi, BelgeNo, BelgeTarihi, FirmaId, BirimMaliyet
