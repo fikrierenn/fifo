@@ -123,7 +123,9 @@ BEGIN
 
     IF @DryRun = 1
     BEGIN
-        SELECT *
+        -- FIX: acik 6 kolon (eski SELECT * = 7 kolon/KalanMiktar dahil) → cagiranin
+        -- #sentetikDryRun(6) + bos-vaka SELECT(6) ile uyumlu. INSERT-EXEC mismatch giderildi.
+        SELECT StkId, GirisTarihi, GirisMiktar, BirimMaliyet, Durum, SatinalmaSarti
         FROM #sentetik
         ORDER BY StkId;
         RETURN;

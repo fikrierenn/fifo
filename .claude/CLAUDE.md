@@ -4,6 +4,19 @@
 > Agent göreve göre ilgili dosyayı okur, tamamını yüklemez.
 > Session sonunda bu dosyadaki SON DURUM bölümünü güncelle.
 
+## SON DURUM (2026-06-19 #8)
+- **URETIM TEK-MASTER (0→canli) + UCTAN-UCA OCAK DOGRULAMA.** `v2-production/00_V2_MASTER_FULL.sql` (`tools/build-master.sh` uretir) — portable, parametrik `$(MaliyetDb)`/`$(ErpDb)`, CURATED: 16 SP/11 view/15 tablo + curated seed. HARIC: test/benchmark (06/08/10/11), superseded (07→16 + eski AcilisCalistir/AylikRutin; AcilisMaliyetlendir/AylikCalistir TUTULDU), local-fix (20/21). Bos `BKMMaliyet_Test`'e deploy+acilis+AylikRutinFull+Ortalama = **0 hata**.
+- **OCAK 2026 (yeni master): Gelir 72.35M / SMM 46.71M / Brut 25.65M / marj %35.4** — rev2 (#7) ile BIREBIR. maliyetsiz katman=0. Kategori3: Hazirlik brut 4.37M, Kirtasiye 5.89M, Kitap 4.33M, Cocuk 3.62M, Oyuncak 4.15M.
+- **ACILIS GECMIS-DOGRU FIX (14)**: eski V2 `stokSonAltDepo_vw` (ANLIK stok) → 2025-12-31 acilisini BUGUNKU stokla kuruyordu (yanlis). **irsHrk KUMULATIF (ehTrhS<=envanter)** yapildi (02 gibi) → gecmise-dogru + stokSonAltDepo_vw bagimliligi kalkti.
+- **GARANTI FINAL-TIER (14 ADIM 5.5)**: tum tier sonrasi maliyetsiz/katmansiz acilis stogu → **SonAlis(gercek) → SatisFiyat×kategori-oran → kategori-ort → impute-EDILEMEZ DEVRE-DISI**. **1-TL SABIT KALDIRILDI** (`@GarantiSabitFiyat` param silindi). Acilis `#stoklar` artik FifoDevreDisiUrunler FILTRELER (§2).
+- **SABIT BUG (kaldirilan)**: 1-TL sabit, non-inventory'yi (sinav SURELI YAYIN/hediye ceki/kafe) %100 marj sayip Ocak'i +1.37M (272 kalem) SISIRIYORDU. Kaldirilinca rev2'ye dondu.
+- **SonAlis tier DERSI (product-by-product)**: salt kategori-imput, gercek urunleri (SonAlis>0 ama kategori-disi: 226066 Mevsimler Dizisi, Love Kutusu...) yanlis devre-disi yapiyordu. SonAlis tier → **yanlis-dislama=0** (auto-devre-disi 71, hepsi SonAlis=0).
+- **04 fix**: SentetikKatmanOlustur @DryRun `SELECT *` (7 kolon) → acik 6 kolon → AylikRutinFull INSERT-EXEC mismatch giderildi.
+- **DOGRULAMA ORTAMI**: `tools/S1-reseed-irs-irsAyr.ps1` irs(290K)+irsAyr(4.6M alis) 201→lokal (irs stub'i eId/eMekan idi). AylikRutinFull satis irs/irsAyr GEREKTIRMEDI (irsHrk+fat/fatAyr yeter). **201 ERISILEMEZ** (VPN/kapali) — cutover/re-seed icin lazim.
+- **Repo ayrimi (kullanici 19.06): FIFO=asil proje, pusula=sadece semantik katman.** Plan: `docs/PLAN-uretim-master-deploy.md` (Tier-3).
+- **Uncommitted (12, COMMIT BEKLIYOR)**: 14/04/fifo-domain(§6) M + master/build-master.sh/S1-script/PLAN/5 xlsx ??.
+- **SIRADAKI**: (1) **COMMIT** (master+14/04 fix+scripts+PLAN), (2) **sizan gercek-gider** (ALIS KARGO GIDERI/Zkargo, Bkm-bagging-poset — SonAlis>0 oldugu icin maliyetlendi) → stkID-curated devre-disi (GOZLE-DOGRULA; ISIM-PATTERN DEGIL — "Geri Donusum" cocuk kitaplari / "Poset Dosya" kirtasiye GERCEK urun! §3), (3) prod cutover (201 acilinca, AYRI onay), (4) negatif-marj 34 (`raporlar/negatif-marj-hata-suphe-2026-06-19.xlsx`).
+- ---- onceki #7 (referans) ----
 ## SON DURUM (2026-06-06 #7)
 - **OCAK 2026 TAM TEMIZLIK + KARLILIK rev2.** Son commit `fd1ace4`. 10 commit bu oturum.
 - **Karlilik rev2**: Gelir 72.27M · Maliyet 46.69M · **Brut kar 25.58M · marj %35.40**. Rapor `raporlar/Ocak2026_Karlilik_Raporu.md` (rev2) + CSV 89.197 satir (isim kolonlu). Magaza 4477 %37.4 / 1 %38.2 / 4478 %38.1 / depo-12 %6.9.

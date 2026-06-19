@@ -52,6 +52,7 @@ BEGIN
         RETURN;
     END
 
+
     DECLARE @baslangicTarihi DATE = DATEFROMPARTS(2021, 5, 31);
     DECLARE @stepKey VARCHAR(50);
     DECLARE @stepName VARCHAR(100);
@@ -84,17 +85,23 @@ BEGIN
 
         IF OBJECT_ID('tempdb..#stoklarMekan', 'U') IS NOT NULL DROP TABLE #stoklarMekan;
 
+        -- DUZELTME (2026-06-19): GECMIS-DOGRU acilis snapshot'i. Eski V2 stokSonAltDepo_vw
+        -- (ANLIK stok) kullaniyordu → 2025-12-31 acilisini BUGUNKU stokla kuruyordu (yanlis).
+        -- 02_V2 (kanit-dogru, 508K) gibi irsHrk KUMULATIF (ehTrhS <= @EnvanterTarihi) — hem
+        -- gecmise-dogru hem stokSonAltDepo_vw bagimliligini kaldirir (sadece irsHrk).
         SELECT
-            d.ehMekan AS MekanId,
-            d.ehstkID AS StkId,
-            SUM(CONVERT(DECIMAL(18,4), d.stok)) AS StokMiktar
+            h.ehMekan AS MekanId,
+            h.ehStkId AS StkId,
+            SUM(CONVERT(DECIMAL(18,4), h.ehAdetN)) AS StokMiktar
         INTO #stoklarMekan
-        FROM DerinSIS_Local.dbo.stokSonAltDepo_vw d
-        WHERE d.ehAltDepo = 0
-          AND d.ehMekan IN (1, 12, 4477, 4478)   -- FIX: mekan 12 (ana depo, en buyuk stok) ortak havuza dahil
-          AND d.stok > 0
-          AND (@StkId IS NULL OR d.ehstkID = @StkId)
-        GROUP BY d.ehMekan, d.ehstkID;
+        FROM DerinSIS_Local.dbo.irsHrk h WITH(NOLOCK)
+        WHERE h.ehTrhS <= @EnvanterTarihi
+          AND h.ehAltDepo = 0
+          AND h.ehMekan IN (1, 12, 4477, 4478)   -- mekan 12 (ana depo) ortak havuza dahil
+          AND (@StkId IS NULL OR h.ehStkId = @StkId)
+          AND NOT EXISTS (SELECT 1 FROM dbo.FifoDevreDisiUrunler d WHERE d.StkId = h.ehStkId)  -- non-inventory devre-disi: envanterde kalir, katman kurulMAZ (fifo-domain §2)
+        GROUP BY h.ehMekan, h.ehStkId
+        HAVING SUM(CONVERT(DECIMAL(18,4), h.ehAdetN)) > 0;
 
         CREATE INDEX IX_tmp_stoklarMekan ON #stoklarMekan(MekanId, StkId);
 
@@ -773,6 +780,95 @@ BEGIN
               CAST(DATEDIFF(SECOND, @fazBaslangic, SYSDATETIME()) AS VARCHAR(10)) + 's';
 
         -- --------------------------------------------------------
+        -- ADIM 5.5: GARANTI FINAL-TIER — kategori-imputation; impute EDILEMEYEN → DEVRE DISI
+        -- Tum tier'lardan (NORMAL→TAMAMLAMA→MERKEZ→SART→AYLIK_DEVIR) sonra hala maliyetsiz
+        -- (BirimMaliyet<=0) / katmansiz acilis stogu:
+        --   kategori-marj imputation (SatisFiyat × KatAna oran) → kategori ort. maliyet.
+        --   Impute EDILEMEYEN (gercek alis/fytOzl YOK + SatisFiyat/kategori YOK = non-inventory
+        --   /obsolete) → FifoDevreDisiUrunler (1-TL SABIT YOK → sahte ~%100 marj uretmez).
+        -- Sonuc: maliyetsiz katman=0 (impute edilenler) + impute-edilemez stok devre-disi.
+        -- fifo-domain §2 (non-inventory devre-disi) + §6 (fiyat 0 olamaz). 19.06 sabit-tier kaldirildi.
+        -- --------------------------------------------------------
+        PRINT '[5.5] GARANTI final-tier (kategori-imputation + impute-edilemez→devre-disi)...';
+
+        IF OBJECT_ID('tempdb..#katOran', 'U') IS NOT NULL DROP TABLE #katOran;
+        SELECT ub.KatAna,
+               CAST(AVG(k.BirimMaliyet / ub.SatisFiyat) AS DECIMAL(18,6)) AS Oran,
+               CAST(AVG(k.BirimMaliyet)                 AS DECIMAL(18,6)) AS OrtMaliyet
+        INTO #katOran
+        FROM dbo.FifoKatman k
+        JOIN DerinSIS_Local.bkm.UrunBilgi ub ON ub.stkID = k.StkId
+        WHERE k.GirisTarihi = @EnvanterTarihi AND k.BirimMaliyet > 0
+          AND k.Durum IN ('NORMAL','TAMAMLAMA','MERKEZ_TAMAMLAMA','SART_TAMAMLAMA')
+          AND ub.SatisFiyat > 0 AND k.BirimMaliyet < ub.SatisFiyat * 3 AND ub.KatAna IS NOT NULL
+          AND (@StkId IS NULL OR k.StkId = @StkId)
+        GROUP BY ub.KatAna HAVING COUNT(*) >= 20;
+
+        /* Impute edilebilir cozum (StkId → maliyet). bm NULL = fiyatlanamaz → devre-disi. */
+        IF OBJECT_ID('tempdb..#imp', 'U') IS NOT NULL DROP TABLE #imp;
+        SELECT s.StkId,
+               CAST(COALESCE(
+                   NULLIF(ub.SonAlis, 0),                                  -- 1) GERCEK son alis (UrunBilgi.SonAlis) = gercek-urun ayraci
+                   NULLIF(CASE WHEN ub.SatisFiyat > 0 AND ko.Oran IS NOT NULL
+                               THEN ub.SatisFiyat * ko.Oran END, 0),       -- 2) kategori-marj imputation
+                   ko.OrtMaliyet) AS DECIMAL(18,6)) AS bm,                 -- 3) kategori ort. mutlak
+               CASE WHEN ub.SonAlis > 0                            THEN 'TAMAMLAMA'      -- gercek son alis
+                    WHEN ub.SatisFiyat > 0 AND ko.Oran IS NOT NULL THEN 'KATEGORI_IMPUT'
+                    ELSE 'KATEGORI_ORT' END AS durum
+        INTO #imp
+        FROM #stoklar s
+        LEFT JOIN DerinSIS_Local.bkm.UrunBilgi ub ON ub.stkID = s.StkId
+        LEFT JOIN #katOran ko ON ko.KatAna = ub.KatAna
+        WHERE (@StkId IS NULL OR s.StkId = @StkId);
+        CREATE INDEX IX_tmp_imp ON #imp(StkId);
+
+        /* (a) Maliyetsiz acilis katmanlarini imputable ise reprice (aylik-devir FIYAT_YOK=0 dahil) */
+        UPDATE k SET k.BirimMaliyet = i.bm, k.Durum = i.durum
+        FROM dbo.FifoKatman k
+        JOIN #imp i ON i.StkId = k.StkId
+        WHERE k.GirisTarihi <= @EnvanterTarihi AND k.BirimMaliyet <= 0 AND i.bm > 0
+          AND (@StkId IS NULL OR k.StkId = @StkId);
+        DECLARE @garantiUpdate INT = @@ROWCOUNT;
+
+        /* (b) Katmansiz acilis stoguna imputable ise ACILIS_TAMAMLA katman */
+        INSERT INTO dbo.FifoKatman
+            (StkId, GirisTarihi, KaynakTip, BelgeNo, BelgeTarihi, FirmaId,
+             GirisMiktar, KalanMiktar, BirimMaliyet, Durum)
+        SELECT s.StkId, @EnvanterTarihi, 'ACILIS_TAMAMLA', NULL, NULL, NULL,
+               s.StokMiktar, s.StokMiktar, i.bm, i.durum
+        FROM #stoklar s
+        JOIN #imp i ON i.StkId = s.StkId
+        WHERE i.bm > 0 AND (@StkId IS NULL OR s.StkId = @StkId)
+          AND NOT EXISTS (SELECT 1 FROM dbo.FifoKatman k
+                          WHERE k.StkId = s.StkId AND k.GirisTarihi <= @EnvanterTarihi);
+        DECLARE @garantiInsert INT = @@ROWCOUNT;
+
+        /* (c) Impute EDILEMEYEN (bm NULL/<=0) VE HALA KATMANSIZ acilis-stok urunleri → DEVRE DISI.
+               NOT EXISTS FifoKatman kosulu ZORUNLU: zaten baska tier'dan katmani olan urunler
+               bkm.UrunBilgi'de SonAlis=0 / kategori eslesme yoksa bm=NULL gelebilir ama katmanlari
+               gercek (AYLIK_DEVIR/ACILIS_TAMAMLA vs) → devre-disi YAPILMAMALI (Busso bug, 2026-06-19). */
+        INSERT INTO dbo.FifoDevreDisiUrunler (StkId, Sebep, EkleyenKullanici, EklenmeTarihi)
+        SELECT DISTINCT i.StkId,
+               N'GARANTI: fiyatlanamaz (alis/fytOzl/SatisFiyat/kategori yok) → non-inventory/obsolete',
+               'acilis-v2-garanti', SYSDATETIME()
+        FROM #imp i
+        WHERE (i.bm IS NULL OR i.bm <= 0)
+          AND NOT EXISTS (SELECT 1 FROM dbo.FifoDevreDisiUrunler d WHERE d.StkId = i.StkId)
+          AND NOT EXISTS (SELECT 1 FROM dbo.FifoKatman k
+                          WHERE k.StkId = i.StkId AND k.GirisTarihi <= @EnvanterTarihi);
+        DECLARE @garantiDevreDisi INT = @@ROWCOUNT;
+
+        /* Devre-disi yapilanlarin sifir-maliyet katmanlarini sil (henuz cikis yok → FK guvenli) */
+        DELETE k FROM dbo.FifoKatman k
+        WHERE k.GirisTarihi <= @EnvanterTarihi AND k.BirimMaliyet <= 0
+          AND (@StkId IS NULL OR k.StkId = @StkId)
+          AND EXISTS (SELECT 1 FROM dbo.FifoDevreDisiUrunler d WHERE d.StkId = k.StkId);
+
+        PRINT '      GARANTI: ' + CAST(@garantiUpdate AS VARCHAR(10)) + ' reprice + ' +
+              CAST(@garantiInsert AS VARCHAR(10)) + ' yeni katman + ' +
+              CAST(@garantiDevreDisi AS VARCHAR(10)) + ' devre-disi (fiyatlanamaz)';
+
+        -- --------------------------------------------------------
         -- ADIM 6: Sorun kayitlari
         -- --------------------------------------------------------
         SET @fazBaslangic = SYSDATETIME();
@@ -787,12 +883,13 @@ BEGIN
         WHERE EnvanterTarihi = @EnvanterTarihi
           AND (@StkId IS NULL OR StkId = @StkId);
 
-        /* FIYAT_YOK - aylik devir katmaninda fiyat bulunamadi */
+        /* KATEGORI_IMPUT_TAMAMLANDI - aylik devirde gercek fiyat yoktu, ADIM 5.5
+           GARANTI tier'i kategori-marj/sabit ile fiyatlandirdi (FIYAT_YOK=0 KALMADI). */
         INSERT INTO dbo.FifoSorunluStoklar
             (StkId, EnvanterTarihi, StokMiktar, SorunTipi, Aciklama)
         SELECT
-            k.StkId, @EnvanterTarihi, SUM(k.AyMiktar), 'FIYAT_YOK',
-            'Aylik devir katmaninda fiyat bulunamadi.'
+            k.StkId, @EnvanterTarihi, SUM(k.AyMiktar), 'KATEGORI_IMPUT_TAMAMLANDI',
+            'Gercek kaynak fiyat yok; kategori-marj imputation/sabit ile tamamlandi (ADIM 5.5).'
         FROM #aylikKatman k
         WHERE k.Durum = 'FIYAT_YOK'
         GROUP BY k.StkId;

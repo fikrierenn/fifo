@@ -28,6 +28,7 @@
 - ERP kaynak = **`DerinSIS_Local`** (DerinSISBkm DEĞİL — karışmasın). SP'ler repoint edildi.
 - Deploy: `Invoke-Sqlcmd -ServerInstance 'BT-FIKRI' -InputFile`. Tek sorgu/SELECT: sqlcli + SQLCLI_CONN. sqlcmd.exe ODBC patlıyor (kullanma).
 - ETL: `sqlcli copy --from <canlı> --to <lokal> --query ... --table ... --truncate` (cross-server SqlBulkCopy). sqlcli **D:/Dev/sqlcli'da** geliştirilir, fifo'ya kopyalanmaz.
+- **sqlcli `--format json` yakalama (19.06 dersi):** JSON sonuç **stderr'e**, banner stdout'a gider → `2>/dev/null > f` SADECE banner kaydeder (boş JSON sanılır). Doğrusu: `... --format json > f 2>&1`. Parse ederken banner'daki ANSI escape (`\x1b[38;5;8m`) içinde `[` var → Python `raw.find('[')` onu yakalar; önce ANSI strip (`re.sub(r'\x1b\[[0-9;]*m','',raw)`), sonra `raw[raw.index('['):raw.rindex(']')+1]`. Ayrıca `SELECT a/b` bölmelerinde `NULLIF(b,0)` (divide-by-zero sorguyu komple patlatır, sessiz boş dosya bırakır).
 - Scope: yıl **2026**, devir **2025-12-31**.
 
 ## 6. FİYAT 0 OLAMAZ — sıfır maliyet KESİNLİKLE yasak (kullanıcı kuralı 2026-06-19)
