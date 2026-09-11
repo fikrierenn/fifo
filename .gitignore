@@ -33,3 +33,9 @@ Thumbs.db
 TestResults/
 coverage/
 *.trx
+
+# Claude Code — kisisel ayarlar (SIR icerir: baglanti dizeleri, izin kaliplari)
+# Paylasilan ayarlar .claude/settings.json icinde (sirsiz).
+.claude/settings.local.json
+# Danisman kapisi isaretleri — oturum-yerel, her SessionStart'ta sifirlanir
+.claude/.advisor-marks/
