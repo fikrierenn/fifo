@@ -41,16 +41,10 @@ BEGIN
     -- PARAMETRE VALIDASYONU
     -- ============================================================
     IF @EnvanterTarihi IS NULL
-    BEGIN
-        RAISERROR('Envanter tarihi bos olamaz', 16, 1);
-        RETURN;
-    END
+        THROW 50001, 'sp_Fifo_AcilisCalistir_V2: @EnvanterTarihi bos olamaz.', 1;
 
     IF @EnvanterTarihi > GETDATE()
-    BEGIN
-        RAISERROR('Envanter tarihi gelecek tarih olamaz', 16, 1);
-        RETURN;
-    END
+        THROW 50002, 'sp_Fifo_AcilisCalistir_V2: @EnvanterTarihi gelecek tarih olamaz.', 1;
 
 
     DECLARE @baslangicTarihi DATE = DATEFROMPARTS(2021, 5, 31);
@@ -59,6 +53,20 @@ BEGIN
     DECLARE @stepOrder INT;
     DECLARE @fazBaslangic DATETIME2(3) = SYSDATETIME();
     DECLARE @urunSayisi INT = 0;
+
+    -- ============================================================
+    -- HATA DEGISKENLERI
+    -- ERROR_MESSAGE() / ERROR_LINE() / ERROR_SEVERITY() / ERROR_STATE()
+    -- YALNIZCA CATCH blogu icinde gecerlidir; blok disinda NULL doner.
+    -- Bu yuzden degerler CATCH icinde yakalanir, ortak HataYonetimi blogunda
+    -- sadece KULLANILIR. (Onceki surumde GOTO ile bloktan cikildigi icin
+    -- hata metni NULL oluyor, log bos yaziliyor ve orijinal hata kayboluyordu.)
+    -- ============================================================
+    DECLARE @ErrorNumber   INT            = NULL;
+    DECLARE @ErrorMessage  NVARCHAR(4000) = NULL;
+    DECLARE @ErrorSeverity INT            = NULL;
+    DECLARE @ErrorState    INT            = NULL;
+    DECLARE @ErrorLine     INT            = NULL;
 
     -- ============================================================
     -- FAZ 1: ENVANTER SNAPSHOT + ALISLAR
@@ -233,6 +241,14 @@ BEGIN
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+
+        -- Hata bilgisini CATCH icindeyken yakala (disarida NULL doner).
+        SELECT @ErrorNumber   = ERROR_NUMBER(),
+               @ErrorMessage  = ERROR_MESSAGE(),
+               @ErrorSeverity = ERROR_SEVERITY(),
+               @ErrorState    = ERROR_STATE(),
+               @ErrorLine     = ERROR_LINE();
+
         GOTO HataYonetimi;
     END CATCH
 
@@ -500,6 +516,14 @@ BEGIN
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+
+        -- Hata bilgisini CATCH icindeyken yakala (disarida NULL doner).
+        SELECT @ErrorNumber   = ERROR_NUMBER(),
+               @ErrorMessage  = ERROR_MESSAGE(),
+               @ErrorSeverity = ERROR_SEVERITY(),
+               @ErrorState    = ERROR_STATE(),
+               @ErrorLine     = ERROR_LINE();
+
         GOTO HataYonetimi;
     END CATCH
 
@@ -767,8 +791,15 @@ BEGIN
                  GirisMiktar, KalanMiktar, BirimMaliyet, Durum)
             SELECT
                 k.StkId, k.AyBitis, 'AYLIK_DEVIR', NULL, k.AyBitis, NULL,
-                k.AyMiktar, k.AyMiktar, ISNULL(k.BirimMaliyet, 0), k.Durum
-            FROM #aylikKatman k;
+                k.AyMiktar, k.AyMiktar, k.BirimMaliyet, k.Durum
+            FROM #aylikKatman k
+            -- FIYAT 0 OLAMAZ (fifo-domain.md §6): fiyatsiz satir 0 maliyetle YAZILMAZ.
+            -- Kardes SP 02_V2 sp_Fifo_AcilisMaliyetlendir ayni filtreyi kullaniyor.
+            -- Burada elenen urun katmansiz kalir ve ADIM 5.5 garanti tier'i tarafindan
+            -- (SonAlis -> SatisFiyat x kategori-oran -> kategori-ort -> devre-disi)
+            -- fiyatlandirilir. Eskiden ISNULL(...,0) ile 0 maliyet yaziliyordu.
+            WHERE k.BirimMaliyet IS NOT NULL
+              AND k.BirimMaliyet > 0;
 
             DECLARE @aylikDevir INT = @@ROWCOUNT;
             PRINT '      Aylik devir katman: ' + CAST(@aylikDevir AS VARCHAR(10));
@@ -976,6 +1007,14 @@ BEGIN
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+
+        -- Hata bilgisini CATCH icindeyken yakala (disarida NULL doner).
+        SELECT @ErrorNumber   = ERROR_NUMBER(),
+               @ErrorMessage  = ERROR_MESSAGE(),
+               @ErrorSeverity = ERROR_SEVERITY(),
+               @ErrorState    = ERROR_STATE(),
+               @ErrorLine     = ERROR_LINE();
+
         GOTO HataYonetimi;
     END CATCH
 
@@ -983,11 +1022,13 @@ BEGIN
     -- HATA YONETIMI (tum fazlardan ortak)
     -- ============================================================
     HataYonetimi:
-        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
-        DECLARE @ErrorSeverity INT = ERROR_SEVERITY();
-        DECLARE @ErrorState INT = ERROR_STATE();
-        DECLARE @ErrorLine INT = ERROR_LINE();
-        DECLARE @runMessage VARCHAR(500) = SUBSTRING(CONVERT(VARCHAR(500), @ErrorMessage), 1, 500);
+        -- Degiskenler CATCH icinde dolduruldu (yukaridaki DECLARE blogu).
+        -- Burada ERROR_*() cagirmak YASAK: CATCH disindayiz, hepsi NULL doner.
+        DECLARE @ErrMetin NVARCHAR(4000) =
+            ISNULL(@ErrorMessage, N'<hata metni alinamadi>');
+
+        DECLARE @runMessage VARCHAR(500) =
+            SUBSTRING(CONVERT(VARCHAR(500), @ErrMetin), 1, 500);
 
         IF @IslemId IS NOT NULL AND @stepKey IS NOT NULL
             EXEC dbo.sp_MaliyetAdimYaz
@@ -998,13 +1039,35 @@ BEGIN
                 @Durum = 'HATA',
                 @Mesaj = @runMessage;
 
-        INSERT INTO dbo.FifoSorunluStoklar
-            (StkId, EnvanterTarihi, StokMiktar, SorunTipi, Aciklama)
-        VALUES (0, @EnvanterTarihi, 0, 'PROSEDUR_HATASI',
-                'sp_Fifo_AcilisCalistir_V2 - Satir: ' + CAST(@ErrorLine AS VARCHAR(10)) +
-                ' - ' + @ErrorMessage);
+        -- Sorun kaydini yazmak ASIL HATAYI EZMEMELI.
+        -- PK (EnvanterTarihi, MekanId, StkId, SorunTipi) sabit oldugu icin ayni tarihte
+        -- ikinci bir hata olustugunda duz INSERT 2627 (PK ihlali) verir; XACT_ABORT ON
+        -- ile batch orada olur ve asagidaki THROW hic calismaz — cagirana gercek hata
+        -- yerine "Violation of PRIMARY KEY" doner. Bu yuzden once sil, sonra yaz ve
+        -- tum blogu kendi TRY/CATCH'ine al.
+        BEGIN TRY
+            DELETE FROM dbo.FifoSorunluStoklar
+            WHERE EnvanterTarihi = @EnvanterTarihi
+              AND MekanId = 0 AND StkId = 0 AND SorunTipi = 'PROSEDUR_HATASI';
 
-        RAISERROR(@ErrorMessage, @ErrorSeverity, @ErrorState);
+            -- CONCAT kullan: '+' ile NULL bir parca tum metni NULL yapar ve log bos kalir.
+            INSERT INTO dbo.FifoSorunluStoklar
+                (StkId, EnvanterTarihi, StokMiktar, SorunTipi, Aciklama)
+            VALUES (0, @EnvanterTarihi, 0, 'PROSEDUR_HATASI',
+                    CONVERT(NVARCHAR(500),
+                        CONCAT(N'sp_Fifo_AcilisCalistir_V2 - Hata No: ', @ErrorNumber,
+                               N' - Satir: ', @ErrorLine,
+                               N' - ', @ErrMetin)));
+        END TRY
+        BEGIN CATCH
+            -- Log yazilamadi; asil hatayi kaybetme, sadece bildir.
+            PRINT 'UYARI: PROSEDUR_HATASI sorun kaydi yazilamadi: ' + ISNULL(ERROR_MESSAGE(), N'?');
+        END CATCH;
+        -- ^ Noktali virgul ZORUNLU: T-SQL, THROW'dan onceki ifadenin ';' ile
+        --   bitmesini ister, yoksa "Incorrect syntax near 'THROW'" verir.
+
+        -- Orijinal hata numarasi mesaja gomuldu; cagirana hata YUTULMADAN iletilir.
+        THROW 50000, @ErrMetin, 1;
 END
 GO
 

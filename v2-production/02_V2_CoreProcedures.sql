@@ -191,7 +191,14 @@ BEGIN
             FROM Ters t
             JOIN #stoklar s ON s.StkId = t.StkId
         )
-        SELECT * INTO #katman FROM Acilis WHERE acilisMiktar > 0;
+        -- Acik kolon listesi (SELECT * yasak): CTE'ye kolon eklenirse burasi sessizce
+        -- degismesin, derleme hatasi versin.
+        SELECT
+            StkId, GirisTarihi, BelgeNo, BelgeTarihi, FirmaId,
+            satirMiktar, BirimMaliyet, kumTers, StokMiktar, acilisMiktar
+        INTO #katman
+        FROM Acilis
+        WHERE acilisMiktar > 0;
 
         /* 4) Acilis oncesi temizlik:
               - ACILIS/ACILIS_TAMAMLA: sadece envanter tarihi
@@ -251,6 +258,10 @@ BEGIN
                     ORDER BY a.GirisTarihi DESC, a.BelgeNo DESC
                 ) AS rn
             FROM #alislar a
+            -- FIYAT 0 OLAMAZ (fifo-domain §6): 0/negatif degerli son-alis satiri
+            -- (numune, hediye, duzeltme irsaliyesi — fatAyr.ehTutarN=0) atlanir,
+            -- en son SIFIRDAN FARKLI alis secilir. 14_V2 ile ayni guard.
+            WHERE a.BirimMaliyet > 0
         )
         INSERT INTO dbo.FifoKatman
             (StkId, GirisTarihi, KaynakTip, BelgeNo, BelgeTarihi, FirmaId,
@@ -312,6 +323,8 @@ BEGIN
                     ORDER BY m.GirisTarihi DESC, m.BelgeNo DESC
                 ) AS rn
             FROM #merkezAlis m
+            -- FIYAT 0 OLAMAZ (§6): merkez tier'inda da 0/negatif alis atlanir. 14_V2 ile ayni.
+            WHERE m.BirimMaliyet > 0
         )
         SELECT
             StkId, GirisTarihi, BelgeNo, BelgeTarihi, FirmaId, BirimMaliyet
@@ -469,7 +482,11 @@ BEGIN
                 FROM Aylik a
                 JOIN #eksikKalan e ON e.StkId = a.StkId
             )
-            SELECT * INTO #aylikAlloc FROM Alloc WHERE ayMiktar > 0;
+            -- Acik kolon listesi (SELECT * yasak).
+            SELECT StkId, ayBitis, ayMiktar
+            INTO #aylikAlloc
+            FROM Alloc
+            WHERE ayMiktar > 0;
 
             IF OBJECT_ID('tempdb..#sabitFiyat', 'U') IS NOT NULL DROP TABLE #sabitFiyat;
             CREATE TABLE #sabitFiyat (
