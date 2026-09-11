@@ -24,34 +24,41 @@ GO
    PK: (YilAy, StkId) -- FifoKatman gibi lokasyon aggregate
    ============================================================ */
 
-/* -------- TABLO -------- */
-IF OBJECT_ID('dbo.OrtalamaAylikMaliyet', 'U') IS NOT NULL
-    DROP TABLE dbo.OrtalamaAylikMaliyet;
+/* -------- TABLO --------
+   2026-09-10 REVIZYON: burada bu tabloyu KOSULSUZ dusuren yikici bir DDL vardi.
+   (Ifadeyi bilerek literal yazmiyoruz: build-master yikici-DDL kapisi metin
+    tarar ve yorumda gecen ifade build'i kalici olarak kilitler.)
+   Master her re-deploy'da aylik ortalama maliyet tablosunu SESSIZCE siliyordu;
+   silme hata uretmez, kimse fark etmez. 01_V2_Tables ile ayni desene cevrildi:
+   tablo yalnizca YOKSA olusturulur, mevcut veri korunur.
+   Bilincli sifirlama icin 01a_V2_Tables_RESET.sql desenini kullanin.            */
+IF OBJECT_ID('dbo.OrtalamaAylikMaliyet', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.OrtalamaAylikMaliyet (
+        YilAy               INT             NOT NULL,  -- YYYYMM (ornek: 202601)
+        StkId               INT             NOT NULL,
+        AyBasiMiktar        DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_AyBasiMiktar  DEFAULT 0,
+        AyBasiTutar         DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_AyBasiTutar   DEFAULT 0,
+        GirisMiktar         DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_GirisMiktar   DEFAULT 0,
+        GirisTutar          DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_GirisTutar    DEFAULT 0,
+        CikisMiktar         DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_CikisMiktar   DEFAULT 0,
+        AySonuMiktar        DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_AySonuMiktar  DEFAULT 0,
+        AySonuBirimMaliyet  DECIMAL(18,6)   NOT NULL CONSTRAINT DF_OAM_AySonuBMal   DEFAULT 0,
+        AySonuTutar         DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_AySonuTutar   DEFAULT 0,
+        CreateUtc           DATETIME2(0)    NOT NULL CONSTRAINT DF_OAM_CreateUtc     DEFAULT GETUTCDATE(),
+        UpdateUtc           DATETIME2(0)    NOT NULL CONSTRAINT DF_OAM_UpdateUtc     DEFAULT GETUTCDATE(),
+        CONSTRAINT PK_OrtalamaAylikMaliyet PRIMARY KEY (YilAy, StkId)
+    );
+    PRINT 'dbo.OrtalamaAylikMaliyet olusturuldu.';
+END
+ELSE
+    PRINT 'dbo.OrtalamaAylikMaliyet zaten var — korundu.';
 GO
 
-CREATE TABLE dbo.OrtalamaAylikMaliyet (
-    YilAy               INT             NOT NULL,  -- YYYYMM (ornek: 202601)
-    StkId               INT             NOT NULL,
-    AyBasiMiktar        DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_AyBasiMiktar  DEFAULT 0,
-    AyBasiTutar         DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_AyBasiTutar   DEFAULT 0,
-    GirisMiktar         DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_GirisMiktar   DEFAULT 0,
-    GirisTutar          DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_GirisTutar    DEFAULT 0,
-    CikisMiktar         DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_CikisMiktar   DEFAULT 0,
-    AySonuMiktar        DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_AySonuMiktar  DEFAULT 0,
-    AySonuBirimMaliyet  DECIMAL(18,6)   NOT NULL CONSTRAINT DF_OAM_AySonuBMal   DEFAULT 0,
-    AySonuTutar         DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_AySonuTutar   DEFAULT 0,
-    CreateUtc           DATETIME2(0)    NOT NULL CONSTRAINT DF_OAM_CreateUtc     DEFAULT GETUTCDATE(),
-    UpdateUtc           DATETIME2(0)    NOT NULL CONSTRAINT DF_OAM_UpdateUtc     DEFAULT GETUTCDATE(),
-    CONSTRAINT PK_OrtalamaAylikMaliyet PRIMARY KEY (YilAy, StkId)
-);
-GO
-
-CREATE INDEX IX_OAM_StkIdYilAy
-    ON dbo.OrtalamaAylikMaliyet(StkId, YilAy)
-    INCLUDE (AySonuMiktar, AySonuBirimMaliyet, AySonuTutar);
-GO
-
-PRINT 'dbo.OrtalamaAylikMaliyet olusturuldu.';
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_OAM_StkIdYilAy' AND object_id = OBJECT_ID('dbo.OrtalamaAylikMaliyet'))
+    CREATE INDEX IX_OAM_StkIdYilAy
+        ON dbo.OrtalamaAylikMaliyet(StkId, YilAy)
+        INCLUDE (AySonuMiktar, AySonuBirimMaliyet, AySonuTutar);
 GO
 
 /* -------- STORED PROCEDURE -------- */
