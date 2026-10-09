@@ -4,6 +4,18 @@
 > Agent göreve göre ilgili dosyayı okur, tamamını yüklemez.
 > Session sonunda bu dosyadaki SON DURUM bölümünü güncelle.
 
+## SON DURUM (2026-09-11 #9)
+- **TAM KOSU DOGRULANDI + KAPI ALTYAPISI KURULDU.** Dolu DB kopyasinda (`BKMMaliyet_Run`, BACKUP/RESTORE ile) acilis + AylikRutinFull + Ortalama kosuldu. **Sifir maliyetli katman = 0, sifir maliyetli cikis = 0, C1/C2/C3/C4 hepsi 0.**
+- **OCAK 2026 (yeni kosu): Gelir 72.337M / SMM 46.654M / Brut 25.683M / marj %35.505.** 267.725 cikis satiri / 55.955 urun.
+- **REFERANS BAYATMIS (kritik bulgu):** `BKMMaliyet` son pipeline kosusu **2026-06-02**; acilis geçmise-dogru fix'i (`e80c74c`) **2026-06-19**'da girdi. Yani o DB uc acilis duzeltmesinden ONCE kurulmus. Ona gore %0,41 sapma FARKLI ALGORITMA karsilastirmasidir. #8 dokumante rakamlarina (72.35/46.71/25.65/%35.4) gore fark **%0,13 icinde**.
+- **Sapma ayrisimi:** 48 urun yalniz yeni kosuda (+71.610 gelir / +44.504 SMM) · 55.907 ortak urunde gelir BIREBIR ayni, SMM -77.546. ACILIS katmani -63.086, ACILIS_TAMAMLA +22.387 (acilis fix'inin dogrudan sonucu). ALIS katmani **birebir ayni** (53.781).
+- **BUGUN DUZELTILEN 3 KRITIK (danisman ajanlar buldu, ben kacirdim):** (1) `12_V2`de ikinci kosulsuz DROP TABLE — ortalama maliyet tablosunu her deploy'da siliyordu, lokalde bos oldugu icin test gormedi. (2) `14_V2` aylik devir katmanini `ISNULL(...,0)` ile FILTRESIZ yaziyordu → siki CHECK ile acilisi 547 ile olduruyordu. (3) `02_V2` son-alis + merkez kademelerinde sifir-fiyat korumasi YOKTU (14'te vardi).
+- **KAPI ALTYAPISI (yeni):** `tools/build-master.sh` 8 fail-closed dogrulama (yikici DDL kalinti sayimi, TRUNCATE, CK denge+VARLIK, SP envanteri, sizinti) — **8 kirilabilirlik senaryosu ile kanitlandi**. `sema/degismezler.json` + `tools/fifo-degismez.ps1` (14 kosan degismez, cikis 0/1/2 sozlesmesi, eski DB'de 2 KIRIK vererek kirilabilirligi kanitlandi). `.claude/hooks/` 3 kanca: tier3-plan-gate, pre-edit-advisor-gate, post-edit-antipattern (oz-test: kotu.sql 15/15, iyi.sql 0 yanlis alarm).
+- **YENI DANISMANLAR:** `fifo-danisman` (muhasebe karari) · `fifo-deploy-danismani` · `fifo-kapi-danismani`. Skill: `fifo-sql-developer`, `sema-ogren`.
+- **YENI KURALLAR** (bel+pusula'dan uyarlandi, gerekceler FIFO'nun kendi olculmus hatalarindan): plan-first · calisma-protokolu · olctum-mu-cikardim-mi · dogrulama-siniri · danisman-brifingi · yama-hedefi-dogrulama · kosan-is-bayatlar · alan-var-mi-sor · sql-server-conventions · error-handling · footprint-ladder · before-major-change · semantic-layer.
+- **GUVENLIK (ACIK):** `sa` sifresi 6 dosyada ve git gecmisinde (`.claude/settings.local.json`, `arsiv/app/appsettings.*`, `arsiv/yedek/*`). **Sifre dondurulmeli.**
+- **SIRADAKI:** (1) COMMIT (buyuk degisiklik seti), (2) sifre rotasyonu, (3) kok `CLAUDE.md` bayat (app/ arsiv'e tasindi, fifo.sln sadece hangfire), (4) sizan gercek-gider stkID-curated devre-disi, (5) prod cutover (201 acilinca, AYRI onay).
+- ---- onceki #8 (referans) ----
 ## SON DURUM (2026-06-19 #8)
 - **URETIM TEK-MASTER (0→canli) + UCTAN-UCA OCAK DOGRULAMA.** `v2-production/00_V2_MASTER_FULL.sql` (`tools/build-master.sh` uretir) — portable, parametrik `$(MaliyetDb)`/`$(ErpDb)`, CURATED: 16 SP/11 view/15 tablo + curated seed. HARIC: test/benchmark (06/08/10/11), superseded (07→16 + eski AcilisCalistir/AylikRutin; AcilisMaliyetlendir/AylikCalistir TUTULDU), local-fix (20/21). Bos `BKMMaliyet_Test`'e deploy+acilis+AylikRutinFull+Ortalama = **0 hata**.
 - **OCAK 2026 (yeni master): Gelir 72.35M / SMM 46.71M / Brut 25.65M / marj %35.4** — rev2 (#7) ile BIREBIR. maliyetsiz katman=0. Kategori3: Hazirlik brut 4.37M, Kirtasiye 5.89M, Kitap 4.33M, Cocuk 3.62M, Oyuncak 4.15M.

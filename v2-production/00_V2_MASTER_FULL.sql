@@ -33,159 +33,327 @@ GO
 SET NOCOUNT ON;
 GO
 /* ============================================================
-   FIFO V2 TABLES (dbo)
+   FIFO V2 TABLES (dbo)  —  IDEMPOTENT / VERI KAYBETTIRMEZ
+
+   2026-09-10 REVIZYON:
+     Eski surum bu noktada 7 cekirdek tabloyu (FifoKatman, FifoCikisDetay,
+     MaliyetIslem dahil) KOSULSUZ DROP ediyordu. Master deploy dolu bir
+     veritabaninda ikinci kez calistirildiginda tum maliyet defteri siliniyordu.
+     Artik her nesne yalnizca YOKSA olusturulur; mevcut veri korunur.
+
+     Bilincli sifirlama gerekiyorsa: 01a_V2_Tables_RESET.sql (master'a DAHIL DEGIL,
+     acik onay degiskeni ister).
    ============================================================ */
-/* Child-first drop for rerunnable deploy */
-IF OBJECT_ID('dbo.MaliyetIslemAdim','U') IS NOT NULL DROP TABLE dbo.MaliyetIslemAdim;
-IF OBJECT_ID('dbo.FifoCikisDetay','U') IS NOT NULL DROP TABLE dbo.FifoCikisDetay;
-IF OBJECT_ID('dbo.FifoSorunluStoklar','U') IS NOT NULL DROP TABLE dbo.FifoSorunluStoklar;
-IF OBJECT_ID('dbo.FifoAcilisEnvanter','U') IS NOT NULL DROP TABLE dbo.FifoAcilisEnvanter;
-IF OBJECT_ID('dbo.FifoKatman','U') IS NOT NULL DROP TABLE dbo.FifoKatman;
-IF OBJECT_ID('dbo.FifoFallbackFiyatlari','U') IS NOT NULL DROP TABLE dbo.FifoFallbackFiyatlari;
-IF OBJECT_ID('dbo.MaliyetIslem','U') IS NOT NULL DROP TABLE dbo.MaliyetIslem;
-GO
-CREATE TABLE dbo.FifoKatman (
-    KatmanId BIGINT IDENTITY(1,1) NOT NULL,
-    StkId INT NOT NULL,
-    GirisTarihi DATE NOT NULL,
-    KaynakTip NVARCHAR(20) NOT NULL,
-    BelgeNo NVARCHAR(50) NULL,
-    BelgeTarihi DATE NULL,
-    FirmaId INT NULL,
-    GirisMiktar DECIMAL(18,4) NOT NULL,
-    KalanMiktar DECIMAL(18,4) NOT NULL,
-    BirimMaliyet DECIMAL(18,6) NOT NULL,
-    Durum NVARCHAR(50) NOT NULL CONSTRAINT DF_FifoKatman_Durum DEFAULT ('NORMAL'),
-    KayitTarihi DATETIME2(0) NOT NULL CONSTRAINT DF_FifoKatman_Kayit DEFAULT (GETDATE()),
-    CONSTRAINT PK_FifoKatman PRIMARY KEY (KatmanId),
-    CONSTRAINT CK_FifoKatman_Miktar CHECK (GirisMiktar > 0 AND KalanMiktar >= 0 AND KalanMiktar <= GirisMiktar),
-    CONSTRAINT CK_FifoKatman_BirimMaliyet CHECK (BirimMaliyet >= 0)
-);
-GO
-CREATE INDEX IX_FifoKatman_Stk_Tarih
-    ON dbo.FifoKatman(StkId, GirisTarihi, KaynakTip, KatmanId);
-GO
-CREATE INDEX IX_FifoKatman_Aktif
-    ON dbo.FifoKatman(StkId, GirisTarihi, KaynakTip, KatmanId)
-    INCLUDE (KalanMiktar, BirimMaliyet, BelgeNo, BelgeTarihi)
-    WHERE KalanMiktar > 0;
-GO
-CREATE TABLE dbo.FifoAcilisEnvanter (
-    EnvanterTarihi DATE NOT NULL,
-    MekanId INT NOT NULL,
-    StkId INT NOT NULL,
-    StokMiktar DECIMAL(18,4) NOT NULL,
-    KayitTarihi DATETIME2(0) NOT NULL CONSTRAINT DF_FifoAcilisEnvanter_Kayit DEFAULT (GETDATE()),
-    CONSTRAINT PK_FifoAcilisEnvanter PRIMARY KEY (EnvanterTarihi, MekanId, StkId),
-    CONSTRAINT CK_FifoAcilisEnvanter_Stok CHECK (StokMiktar >= 0)
-);
-GO
-CREATE INDEX IX_FifoAcilisEnvanter_Stk
-    ON dbo.FifoAcilisEnvanter(StkId, EnvanterTarihi, MekanId)
-    INCLUDE (StokMiktar);
-GO
-CREATE TABLE dbo.FifoSorunluStoklar (
-    EnvanterTarihi DATE NOT NULL,
-    MekanId INT NOT NULL CONSTRAINT DF_FifoSorunluStoklar_Mekan DEFAULT (0),
-    StkId INT NOT NULL,
-    SorunTipi NVARCHAR(50) NOT NULL,
-    StokMiktar DECIMAL(18,4) NOT NULL,
-    Aciklama NVARCHAR(500) NULL,
-    KayitTarihi DATETIME2(0) NOT NULL CONSTRAINT DF_FifoSorunluStoklar_Kayit DEFAULT (GETDATE()),
-    CONSTRAINT PK_FifoSorunluStoklar PRIMARY KEY (EnvanterTarihi, MekanId, StkId, SorunTipi)
-);
-GO
-CREATE INDEX IX_FifoSorunluStoklar_TarihStkMekan
-    ON dbo.FifoSorunluStoklar(EnvanterTarihi, StkId, MekanId);
-GO
-CREATE INDEX IX_FifoSorunluStoklar_TipTarih
-    ON dbo.FifoSorunluStoklar(SorunTipi, EnvanterTarihi)
-    INCLUDE (StkId, MekanId, StokMiktar);
-GO
-CREATE TABLE dbo.FifoFallbackFiyatlari (
-    StkId INT NOT NULL,
-    SatinalmaSarti NVARCHAR(50) NOT NULL,
-    MekanId INT NOT NULL CONSTRAINT DF_FifoFallbackFiyatlari_Mekan DEFAULT (0),
-    BirimMaliyet DECIMAL(18,6) NOT NULL,
-    Miktar DECIMAL(18,4) NOT NULL,
-    ToplamTutar DECIMAL(18,4) NOT NULL,
-    Aciklama NVARCHAR(200) NULL,
-    KayitTarihi DATETIME2(0) NOT NULL CONSTRAINT DF_FifoFallbackFiyatlari_Kayit DEFAULT (GETDATE()),
-    CONSTRAINT PK_FifoFallbackFiyatlari PRIMARY KEY (StkId, SatinalmaSarti, MekanId),
-    CONSTRAINT CK_FifoFallbackFiyatlari_Pozitif CHECK (BirimMaliyet > 0 AND Miktar >= 0 AND ToplamTutar >= 0)
-);
-GO
-CREATE INDEX IX_FifoFallbackFiyatlari_Satinalma
-    ON dbo.FifoFallbackFiyatlari(SatinalmaSarti, StkId, MekanId)
-    INCLUDE (BirimMaliyet, Miktar, ToplamTutar);
-GO
-CREATE TABLE dbo.FifoCikisDetay (
-    CikisId BIGINT IDENTITY(1,1) NOT NULL,
-    StkId INT NOT NULL,
-    HareketTarihi DATE NOT NULL,
-    HareketTipi NVARCHAR(10) NOT NULL,
-    MekanId INT NULL,
-    BelgeNo NVARCHAR(50) NULL,
-    KatmanId BIGINT NOT NULL,
-    KatmanTarihi DATE NOT NULL,
-    KatmanBelgeNo NVARCHAR(50) NULL,
-    Miktar DECIMAL(18,4) NOT NULL,
-    BirimMaliyet DECIMAL(18,6) NOT NULL,
-    CikisTutar AS (Miktar * BirimMaliyet) PERSISTED,
-    KayitTarihi DATETIME2(0) NOT NULL CONSTRAINT DF_FifoCikisDetay_Kayit DEFAULT (GETDATE()),
-    CONSTRAINT PK_FifoCikisDetay PRIMARY KEY (CikisId),
-    CONSTRAINT FK_FifoCikisDetay_FifoKatman FOREIGN KEY (KatmanId) REFERENCES dbo.FifoKatman(KatmanId),
-    CONSTRAINT CK_FifoCikisDetay_Miktar CHECK (Miktar > 0)
-);
-GO
-CREATE INDEX IX_FifoCikisDetay_StkTarih
-    ON dbo.FifoCikisDetay(StkId, HareketTarihi)
-    INCLUDE (MekanId, HareketTipi, Miktar, CikisTutar, KatmanId);
-GO
-CREATE INDEX IX_FifoCikisDetay_MekanTarih
-    ON dbo.FifoCikisDetay(MekanId, HareketTarihi)
-    INCLUDE (StkId, HareketTipi, Miktar, CikisTutar, KatmanId);
-GO
-CREATE TABLE dbo.MaliyetIslem (
-    IslemId UNIQUEIDENTIFIER NOT NULL,
-    IslemAdi NVARCHAR(200) NULL,
-    Baslangic DATETIME2(3) NOT NULL,
-    Bitis DATETIME2(3) NULL,
-    Durum NVARCHAR(30) NOT NULL,
-    Aciklama NVARCHAR(500) NULL,
-    EnvanterTarihi DATE NULL,
-    MekanId INT NULL,
-    StkId INT NULL,
-    CONSTRAINT PK_MaliyetIslem PRIMARY KEY (IslemId)
-);
-GO
-CREATE INDEX IX_MaliyetIslem_Durum
-    ON dbo.MaliyetIslem(Durum, Baslangic DESC)
-    INCLUDE (Bitis, IslemAdi, StkId, MekanId, EnvanterTarihi);
-GO
-CREATE TABLE dbo.MaliyetIslemAdim (
-    IslemId UNIQUEIDENTIFIER NOT NULL,
-    SiraNo INT NOT NULL,
-    AdimKodu NVARCHAR(50) NOT NULL,
-    AdimAdi NVARCHAR(200) NOT NULL,
-    Durum NVARCHAR(30) NOT NULL,
-    Mesaj NVARCHAR(500) NULL,
-    Baslangic DATETIME2(3) NULL,
-    Bitis DATETIME2(3) NULL,
-    Guncelleme DATETIME2(3) NOT NULL CONSTRAINT DF_MaliyetIslemAdim_Guncelleme DEFAULT (GETDATE()),
-    CONSTRAINT PK_MaliyetIslemAdim PRIMARY KEY (IslemId, AdimKodu),
-    CONSTRAINT FK_MaliyetIslemAdim_Islem FOREIGN KEY (IslemId) REFERENCES dbo.MaliyetIslem(IslemId)
-);
-GO
-CREATE INDEX IX_MaliyetIslemAdim_Sira
-    ON dbo.MaliyetIslemAdim(IslemId, SiraNo)
-    INCLUDE (AdimKodu, Durum, Baslangic, Bitis, Mesaj);
-GO
-CREATE INDEX IX_MaliyetIslemAdim_AdimKodu
-    ON dbo.MaliyetIslemAdim(AdimKodu, Guncelleme DESC)
-    INCLUDE (IslemId, SiraNo, Durum);
+
+/* ------------------------------------------------------------
+   FifoKatman — FIFO maliyet katmanlari (maliyet defteri)
+   ------------------------------------------------------------ */
+IF OBJECT_ID('dbo.FifoKatman','U') IS NULL
+BEGIN
+    CREATE TABLE dbo.FifoKatman (
+        KatmanId BIGINT IDENTITY(1,1) NOT NULL,
+        StkId INT NOT NULL,
+        GirisTarihi DATE NOT NULL,
+        KaynakTip NVARCHAR(20) NOT NULL,
+        BelgeNo NVARCHAR(50) NULL,
+        BelgeTarihi DATE NULL,
+        FirmaId INT NULL,
+        GirisMiktar DECIMAL(18,4) NOT NULL,
+        KalanMiktar DECIMAL(18,4) NOT NULL,
+        BirimMaliyet DECIMAL(18,6) NOT NULL,
+        Durum NVARCHAR(50) NOT NULL CONSTRAINT DF_FifoKatman_Durum DEFAULT ('NORMAL'),
+        KayitTarihi DATETIME2(0) NOT NULL CONSTRAINT DF_FifoKatman_Kayit DEFAULT (GETDATE()),
+        CONSTRAINT PK_FifoKatman PRIMARY KEY (KatmanId),
+        CONSTRAINT CK_FifoKatman_Miktar CHECK (GirisMiktar > 0 AND KalanMiktar >= 0 AND KalanMiktar <= GirisMiktar),
+        -- FIYAT 0 OLAMAZ (fifo-domain.md §6): stogu olan katman POZITIF maliyet tasir.
+        -- Sifir maliyet = %100 marj = sessiz yanlis kar.
+        CONSTRAINT CK_FifoKatman_BirimMaliyet CHECK (BirimMaliyet > 0)
+    );
+    PRINT 'dbo.FifoKatman olusturuldu.';
+END
+ELSE
+    PRINT 'dbo.FifoKatman zaten var — korundu.';
 GO
 
+/* Mevcut kurulumlarda §6 kapisini GARANTI ALTINA AL.
+   Tetikleyici olarak "eski tanim var mi" YETMEZ: constraint biri tarafindan DROP
+   edilmis, WITH NOCHECK ile guvenilmez birakilmis veya disable edilmis olabilir.
+   O durumda tablo hicbir maliyet kapisi olmadan kalir ve script "tamam" derdi.
+   Bu yuzden kosul "DOGRU HALIYLE, ETKIN ve GUVENILIR sekilde var mi" seklinde kurulur. */
+IF OBJECT_ID('dbo.FifoKatman','U') IS NOT NULL
+   AND NOT EXISTS (
+        SELECT 1 FROM sys.check_constraints
+        WHERE parent_object_id = OBJECT_ID('dbo.FifoKatman')
+          AND name         = 'CK_FifoKatman_BirimMaliyet'
+          AND definition   = '([BirimMaliyet]>(0))'
+          AND is_disabled  = 0
+          AND is_not_trusted = 0
+   )
+BEGIN
+    IF EXISTS (SELECT 1 FROM dbo.FifoKatman WHERE BirimMaliyet <= 0)
+    BEGIN
+        DECLARE @ihlal INT = (SELECT COUNT(*) FROM dbo.FifoKatman WHERE BirimMaliyet <= 0);
+        PRINT '!!! UYARI: FifoKatman icinde BirimMaliyet <= 0 olan ' + CAST(@ihlal AS VARCHAR(20)) +
+              ' satir var. CK_FifoKatman_BirimMaliyet KURULAMADI — §6 KAPISI ACIK.';
+        PRINT '!!! Once bu satirlari fiyatlandirin (bkz. fifo-domain.md §6), sonra tekrar calistirin.';
+
+        -- Uyari PRINT'te kalirsa otomasyonda kaybolur; kalici denetim izi birak.
+        IF OBJECT_ID('dbo.FifoSorunluStoklar','U') IS NOT NULL
+        BEGIN
+            DELETE FROM dbo.FifoSorunluStoklar
+            WHERE EnvanterTarihi = CAST('1900-01-01' AS DATE)
+              AND MekanId = 0 AND StkId = 0 AND SorunTipi = 'CONSTRAINT_KURULAMADI';
+
+            INSERT INTO dbo.FifoSorunluStoklar
+                (StkId, EnvanterTarihi, MekanId, StokMiktar, SorunTipi, Aciklama)
+            VALUES (0, CAST('1900-01-01' AS DATE), 0, 0, 'CONSTRAINT_KURULAMADI',
+                    CONVERT(NVARCHAR(500),
+                        CONCAT(N'CK_FifoKatman_BirimMaliyet kurulamadi: BirimMaliyet<=0 satir sayisi ',
+                               @ihlal, N'. Deploy devam etti, §6 kapisi ACIK.')));
+        END
+    END
+    ELSE
+    BEGIN
+        IF EXISTS (SELECT 1 FROM sys.check_constraints
+                   WHERE parent_object_id = OBJECT_ID('dbo.FifoKatman')
+                     AND name = 'CK_FifoKatman_BirimMaliyet')
+            ALTER TABLE dbo.FifoKatman DROP CONSTRAINT CK_FifoKatman_BirimMaliyet;
+
+        ALTER TABLE dbo.FifoKatman WITH CHECK
+            ADD CONSTRAINT CK_FifoKatman_BirimMaliyet CHECK (BirimMaliyet > 0);
+        PRINT 'CK_FifoKatman_BirimMaliyet kuruldu/sikilastirildi: BirimMaliyet > 0.';
+    END
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_FifoKatman_Stk_Tarih' AND object_id = OBJECT_ID('dbo.FifoKatman'))
+    CREATE INDEX IX_FifoKatman_Stk_Tarih
+        ON dbo.FifoKatman(StkId, GirisTarihi, KaynakTip, KatmanId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_FifoKatman_Aktif' AND object_id = OBJECT_ID('dbo.FifoKatman'))
+    CREATE INDEX IX_FifoKatman_Aktif
+        ON dbo.FifoKatman(StkId, GirisTarihi, KaynakTip, KatmanId)
+        INCLUDE (KalanMiktar, BirimMaliyet, BelgeNo, BelgeTarihi)
+        WHERE KalanMiktar > 0;
+GO
+
+/* ------------------------------------------------------------
+   FifoAcilisEnvanter — acilis stok snapshot
+   ------------------------------------------------------------ */
+IF OBJECT_ID('dbo.FifoAcilisEnvanter','U') IS NULL
+BEGIN
+    CREATE TABLE dbo.FifoAcilisEnvanter (
+        EnvanterTarihi DATE NOT NULL,
+        MekanId INT NOT NULL,
+        StkId INT NOT NULL,
+        StokMiktar DECIMAL(18,4) NOT NULL,
+        KayitTarihi DATETIME2(0) NOT NULL CONSTRAINT DF_FifoAcilisEnvanter_Kayit DEFAULT (GETDATE()),
+        CONSTRAINT PK_FifoAcilisEnvanter PRIMARY KEY (EnvanterTarihi, MekanId, StkId),
+        CONSTRAINT CK_FifoAcilisEnvanter_Stok CHECK (StokMiktar >= 0)
+    );
+    PRINT 'dbo.FifoAcilisEnvanter olusturuldu.';
+END
+ELSE
+    PRINT 'dbo.FifoAcilisEnvanter zaten var — korundu.';
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_FifoAcilisEnvanter_Stk' AND object_id = OBJECT_ID('dbo.FifoAcilisEnvanter'))
+    CREATE INDEX IX_FifoAcilisEnvanter_Stk
+        ON dbo.FifoAcilisEnvanter(StkId, EnvanterTarihi, MekanId)
+        INCLUDE (StokMiktar);
+GO
+
+/* ------------------------------------------------------------
+   FifoSorunluStoklar — sorun kayitlari
+   ------------------------------------------------------------ */
+IF OBJECT_ID('dbo.FifoSorunluStoklar','U') IS NULL
+BEGIN
+    CREATE TABLE dbo.FifoSorunluStoklar (
+        EnvanterTarihi DATE NOT NULL,
+        MekanId INT NOT NULL CONSTRAINT DF_FifoSorunluStoklar_Mekan DEFAULT (0),
+        StkId INT NOT NULL,
+        SorunTipi NVARCHAR(50) NOT NULL,
+        StokMiktar DECIMAL(18,4) NOT NULL,
+        Aciklama NVARCHAR(500) NULL,
+        KayitTarihi DATETIME2(0) NOT NULL CONSTRAINT DF_FifoSorunluStoklar_Kayit DEFAULT (GETDATE()),
+        CONSTRAINT PK_FifoSorunluStoklar PRIMARY KEY (EnvanterTarihi, MekanId, StkId, SorunTipi)
+    );
+    PRINT 'dbo.FifoSorunluStoklar olusturuldu.';
+END
+ELSE
+    PRINT 'dbo.FifoSorunluStoklar zaten var — korundu.';
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_FifoSorunluStoklar_TarihStkMekan' AND object_id = OBJECT_ID('dbo.FifoSorunluStoklar'))
+    CREATE INDEX IX_FifoSorunluStoklar_TarihStkMekan
+        ON dbo.FifoSorunluStoklar(EnvanterTarihi, StkId, MekanId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_FifoSorunluStoklar_TipTarih' AND object_id = OBJECT_ID('dbo.FifoSorunluStoklar'))
+    CREATE INDEX IX_FifoSorunluStoklar_TipTarih
+        ON dbo.FifoSorunluStoklar(SorunTipi, EnvanterTarihi)
+        INCLUDE (StkId, MekanId, StokMiktar);
+GO
+
+/* ------------------------------------------------------------
+   FifoFallbackFiyatlari — fallback fiyat kaynagi
+   ------------------------------------------------------------ */
+IF OBJECT_ID('dbo.FifoFallbackFiyatlari','U') IS NULL
+BEGIN
+    CREATE TABLE dbo.FifoFallbackFiyatlari (
+        StkId INT NOT NULL,
+        SatinalmaSarti NVARCHAR(50) NOT NULL,
+        MekanId INT NOT NULL CONSTRAINT DF_FifoFallbackFiyatlari_Mekan DEFAULT (0),
+        BirimMaliyet DECIMAL(18,6) NOT NULL,
+        Miktar DECIMAL(18,4) NOT NULL,
+        ToplamTutar DECIMAL(18,4) NOT NULL,
+        Aciklama NVARCHAR(200) NULL,
+        KayitTarihi DATETIME2(0) NOT NULL CONSTRAINT DF_FifoFallbackFiyatlari_Kayit DEFAULT (GETDATE()),
+        CONSTRAINT PK_FifoFallbackFiyatlari PRIMARY KEY (StkId, SatinalmaSarti, MekanId),
+        CONSTRAINT CK_FifoFallbackFiyatlari_Pozitif CHECK (BirimMaliyet > 0 AND Miktar >= 0 AND ToplamTutar >= 0)
+    );
+    PRINT 'dbo.FifoFallbackFiyatlari olusturuldu.';
+END
+ELSE
+    PRINT 'dbo.FifoFallbackFiyatlari zaten var — korundu.';
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_FifoFallbackFiyatlari_Satinalma' AND object_id = OBJECT_ID('dbo.FifoFallbackFiyatlari'))
+    CREATE INDEX IX_FifoFallbackFiyatlari_Satinalma
+        ON dbo.FifoFallbackFiyatlari(SatinalmaSarti, StkId, MekanId)
+        INCLUDE (BirimMaliyet, Miktar, ToplamTutar);
+GO
+
+/* ------------------------------------------------------------
+   FifoCikisDetay — FIFO cikis (SMM) detayi
+   ------------------------------------------------------------ */
+IF OBJECT_ID('dbo.FifoCikisDetay','U') IS NULL
+BEGIN
+    CREATE TABLE dbo.FifoCikisDetay (
+        CikisId BIGINT IDENTITY(1,1) NOT NULL,
+        StkId INT NOT NULL,
+        HareketTarihi DATE NOT NULL,
+        HareketTipi NVARCHAR(10) NOT NULL,
+        MekanId INT NULL,
+        BelgeNo NVARCHAR(50) NULL,
+        KatmanId BIGINT NOT NULL,
+        KatmanTarihi DATE NOT NULL,
+        KatmanBelgeNo NVARCHAR(50) NULL,
+        Miktar DECIMAL(18,4) NOT NULL,
+        BirimMaliyet DECIMAL(18,6) NOT NULL,
+        CikisTutar AS (Miktar * BirimMaliyet) PERSISTED,
+        KayitTarihi DATETIME2(0) NOT NULL CONSTRAINT DF_FifoCikisDetay_Kayit DEFAULT (GETDATE()),
+        CONSTRAINT PK_FifoCikisDetay PRIMARY KEY (CikisId),
+        CONSTRAINT FK_FifoCikisDetay_FifoKatman FOREIGN KEY (KatmanId) REFERENCES dbo.FifoKatman(KatmanId),
+        CONSTRAINT CK_FifoCikisDetay_Miktar CHECK (Miktar > 0),
+        -- FIYAT 0 OLAMAZ (§6) cikis tarafinda da zorlanir. Cikis birim maliyeti
+        -- katmandan KOPYALANIR; katman > 0 ise cikis da > 0 olmak zorundadir.
+        CONSTRAINT CK_FifoCikisDetay_BirimMaliyet CHECK (BirimMaliyet > 0)
+    );
+    PRINT 'dbo.FifoCikisDetay olusturuldu.';
+END
+ELSE
+    PRINT 'dbo.FifoCikisDetay zaten var — korundu.';
+GO
+
+/* Mevcut kurulumlara cikis-tarafi §6 kapisini ekle. Ihlal varsa PATLAMAZ, uyarir. */
+IF OBJECT_ID('dbo.FifoCikisDetay','U') IS NOT NULL
+   AND NOT EXISTS (
+        SELECT 1 FROM sys.check_constraints
+        WHERE parent_object_id = OBJECT_ID('dbo.FifoCikisDetay')
+          AND name           = 'CK_FifoCikisDetay_BirimMaliyet'
+          AND definition     = '([BirimMaliyet]>(0))'
+          AND is_disabled    = 0
+          AND is_not_trusted = 0
+   )
+BEGIN
+    IF EXISTS (SELECT 1 FROM dbo.FifoCikisDetay WHERE BirimMaliyet <= 0)
+    BEGIN
+        DECLARE @ihlalCikis INT = (SELECT COUNT(*) FROM dbo.FifoCikisDetay WHERE BirimMaliyet <= 0);
+        PRINT '!!! UYARI: FifoCikisDetay icinde BirimMaliyet <= 0 olan ' + CAST(@ihlalCikis AS VARCHAR(20)) +
+              ' satir var. CK_FifoCikisDetay_BirimMaliyet KURULAMADI — §6 kapisi cikis tarafinda ACIK.';
+    END
+    ELSE
+    BEGIN
+        IF EXISTS (SELECT 1 FROM sys.check_constraints
+                   WHERE parent_object_id = OBJECT_ID('dbo.FifoCikisDetay')
+                     AND name = 'CK_FifoCikisDetay_BirimMaliyet')
+            ALTER TABLE dbo.FifoCikisDetay DROP CONSTRAINT CK_FifoCikisDetay_BirimMaliyet;
+
+        ALTER TABLE dbo.FifoCikisDetay WITH CHECK
+            ADD CONSTRAINT CK_FifoCikisDetay_BirimMaliyet CHECK (BirimMaliyet > 0);
+        PRINT 'CK_FifoCikisDetay_BirimMaliyet kuruldu: BirimMaliyet > 0.';
+    END
+END
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_FifoCikisDetay_StkTarih' AND object_id = OBJECT_ID('dbo.FifoCikisDetay'))
+    CREATE INDEX IX_FifoCikisDetay_StkTarih
+        ON dbo.FifoCikisDetay(StkId, HareketTarihi)
+        INCLUDE (MekanId, HareketTipi, Miktar, CikisTutar, KatmanId);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_FifoCikisDetay_MekanTarih' AND object_id = OBJECT_ID('dbo.FifoCikisDetay'))
+    CREATE INDEX IX_FifoCikisDetay_MekanTarih
+        ON dbo.FifoCikisDetay(MekanId, HareketTarihi)
+        INCLUDE (StkId, HareketTipi, Miktar, CikisTutar, KatmanId);
+GO
+
+/* ------------------------------------------------------------
+   MaliyetIslem / MaliyetIslemAdim — islem log (denetim izi)
+   ------------------------------------------------------------ */
+IF OBJECT_ID('dbo.MaliyetIslem','U') IS NULL
+BEGIN
+    CREATE TABLE dbo.MaliyetIslem (
+        IslemId UNIQUEIDENTIFIER NOT NULL,
+        IslemAdi NVARCHAR(200) NULL,
+        Baslangic DATETIME2(3) NOT NULL,
+        Bitis DATETIME2(3) NULL,
+        Durum NVARCHAR(30) NOT NULL,
+        Aciklama NVARCHAR(500) NULL,
+        EnvanterTarihi DATE NULL,
+        MekanId INT NULL,
+        StkId INT NULL,
+        CONSTRAINT PK_MaliyetIslem PRIMARY KEY (IslemId)
+    );
+    PRINT 'dbo.MaliyetIslem olusturuldu.';
+END
+ELSE
+    PRINT 'dbo.MaliyetIslem zaten var — korundu.';
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_MaliyetIslem_Durum' AND object_id = OBJECT_ID('dbo.MaliyetIslem'))
+    CREATE INDEX IX_MaliyetIslem_Durum
+        ON dbo.MaliyetIslem(Durum, Baslangic DESC)
+        INCLUDE (Bitis, IslemAdi, StkId, MekanId, EnvanterTarihi);
+GO
+
+IF OBJECT_ID('dbo.MaliyetIslemAdim','U') IS NULL
+BEGIN
+    CREATE TABLE dbo.MaliyetIslemAdim (
+        IslemId UNIQUEIDENTIFIER NOT NULL,
+        SiraNo INT NOT NULL,
+        AdimKodu NVARCHAR(50) NOT NULL,
+        AdimAdi NVARCHAR(200) NOT NULL,
+        Durum NVARCHAR(30) NOT NULL,
+        Mesaj NVARCHAR(500) NULL,
+        Baslangic DATETIME2(3) NULL,
+        Bitis DATETIME2(3) NULL,
+        Guncelleme DATETIME2(3) NOT NULL CONSTRAINT DF_MaliyetIslemAdim_Guncelleme DEFAULT (GETDATE()),
+        CONSTRAINT PK_MaliyetIslemAdim PRIMARY KEY (IslemId, AdimKodu),
+        CONSTRAINT FK_MaliyetIslemAdim_Islem FOREIGN KEY (IslemId) REFERENCES dbo.MaliyetIslem(IslemId)
+    );
+    PRINT 'dbo.MaliyetIslemAdim olusturuldu.';
+END
+ELSE
+    PRINT 'dbo.MaliyetIslemAdim zaten var — korundu.';
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_MaliyetIslemAdim_Sira' AND object_id = OBJECT_ID('dbo.MaliyetIslemAdim'))
+    CREATE INDEX IX_MaliyetIslemAdim_Sira
+        ON dbo.MaliyetIslemAdim(IslemId, SiraNo)
+        INCLUDE (AdimKodu, Durum, Baslangic, Bitis, Mesaj);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_MaliyetIslemAdim_AdimKodu' AND object_id = OBJECT_ID('dbo.MaliyetIslemAdim'))
+    CREATE INDEX IX_MaliyetIslemAdim_AdimKodu
+        ON dbo.MaliyetIslemAdim(AdimKodu, Guncelleme DESC)
+        INCLUDE (IslemId, SiraNo, Durum);
+GO
+
+PRINT '01_V2_Tables tamamlandi (idempotent — mevcut veri korundu).';
+GO
 
 GO
 PRINT '======== 19 Cikis SatisTutar (computed col, SP ONCESI) ========';
@@ -268,34 +436,41 @@ GO
    PK: (YilAy, StkId) -- FifoKatman gibi lokasyon aggregate
    ============================================================ */
 
-/* -------- TABLO -------- */
-IF OBJECT_ID('dbo.OrtalamaAylikMaliyet', 'U') IS NOT NULL
-    DROP TABLE dbo.OrtalamaAylikMaliyet;
+/* -------- TABLO --------
+   2026-09-10 REVIZYON: burada bu tabloyu KOSULSUZ dusuren yikici bir DDL vardi.
+   (Ifadeyi bilerek literal yazmiyoruz: build-master yikici-DDL kapisi metin
+    tarar ve yorumda gecen ifade build'i kalici olarak kilitler.)
+   Master her re-deploy'da aylik ortalama maliyet tablosunu SESSIZCE siliyordu;
+   silme hata uretmez, kimse fark etmez. 01_V2_Tables ile ayni desene cevrildi:
+   tablo yalnizca YOKSA olusturulur, mevcut veri korunur.
+   Bilincli sifirlama icin 01a_V2_Tables_RESET.sql desenini kullanin.            */
+IF OBJECT_ID('dbo.OrtalamaAylikMaliyet', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.OrtalamaAylikMaliyet (
+        YilAy               INT             NOT NULL,  -- YYYYMM (ornek: 202601)
+        StkId               INT             NOT NULL,
+        AyBasiMiktar        DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_AyBasiMiktar  DEFAULT 0,
+        AyBasiTutar         DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_AyBasiTutar   DEFAULT 0,
+        GirisMiktar         DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_GirisMiktar   DEFAULT 0,
+        GirisTutar          DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_GirisTutar    DEFAULT 0,
+        CikisMiktar         DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_CikisMiktar   DEFAULT 0,
+        AySonuMiktar        DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_AySonuMiktar  DEFAULT 0,
+        AySonuBirimMaliyet  DECIMAL(18,6)   NOT NULL CONSTRAINT DF_OAM_AySonuBMal   DEFAULT 0,
+        AySonuTutar         DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_AySonuTutar   DEFAULT 0,
+        CreateUtc           DATETIME2(0)    NOT NULL CONSTRAINT DF_OAM_CreateUtc     DEFAULT GETUTCDATE(),
+        UpdateUtc           DATETIME2(0)    NOT NULL CONSTRAINT DF_OAM_UpdateUtc     DEFAULT GETUTCDATE(),
+        CONSTRAINT PK_OrtalamaAylikMaliyet PRIMARY KEY (YilAy, StkId)
+    );
+    PRINT 'dbo.OrtalamaAylikMaliyet olusturuldu.';
+END
+ELSE
+    PRINT 'dbo.OrtalamaAylikMaliyet zaten var — korundu.';
 GO
 
-CREATE TABLE dbo.OrtalamaAylikMaliyet (
-    YilAy               INT             NOT NULL,  -- YYYYMM (ornek: 202601)
-    StkId               INT             NOT NULL,
-    AyBasiMiktar        DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_AyBasiMiktar  DEFAULT 0,
-    AyBasiTutar         DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_AyBasiTutar   DEFAULT 0,
-    GirisMiktar         DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_GirisMiktar   DEFAULT 0,
-    GirisTutar          DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_GirisTutar    DEFAULT 0,
-    CikisMiktar         DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_CikisMiktar   DEFAULT 0,
-    AySonuMiktar        DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_AySonuMiktar  DEFAULT 0,
-    AySonuBirimMaliyet  DECIMAL(18,6)   NOT NULL CONSTRAINT DF_OAM_AySonuBMal   DEFAULT 0,
-    AySonuTutar         DECIMAL(18,4)   NOT NULL CONSTRAINT DF_OAM_AySonuTutar   DEFAULT 0,
-    CreateUtc           DATETIME2(0)    NOT NULL CONSTRAINT DF_OAM_CreateUtc     DEFAULT GETUTCDATE(),
-    UpdateUtc           DATETIME2(0)    NOT NULL CONSTRAINT DF_OAM_UpdateUtc     DEFAULT GETUTCDATE(),
-    CONSTRAINT PK_OrtalamaAylikMaliyet PRIMARY KEY (YilAy, StkId)
-);
-GO
-
-CREATE INDEX IX_OAM_StkIdYilAy
-    ON dbo.OrtalamaAylikMaliyet(StkId, YilAy)
-    INCLUDE (AySonuMiktar, AySonuBirimMaliyet, AySonuTutar);
-GO
-
-PRINT 'dbo.OrtalamaAylikMaliyet olusturuldu.';
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_OAM_StkIdYilAy' AND object_id = OBJECT_ID('dbo.OrtalamaAylikMaliyet'))
+    CREATE INDEX IX_OAM_StkIdYilAy
+        ON dbo.OrtalamaAylikMaliyet(StkId, YilAy)
+        INCLUDE (AySonuMiktar, AySonuBirimMaliyet, AySonuTutar);
 GO
 
 /* -------- STORED PROCEDURE -------- */
@@ -718,7 +893,14 @@ BEGIN
             FROM Ters t
             JOIN #stoklar s ON s.StkId = t.StkId
         )
-        SELECT * INTO #katman FROM Acilis WHERE acilisMiktar > 0;
+        -- Acik kolon listesi (SELECT * yasak): CTE'ye kolon eklenirse burasi sessizce
+        -- degismesin, derleme hatasi versin.
+        SELECT
+            StkId, GirisTarihi, BelgeNo, BelgeTarihi, FirmaId,
+            satirMiktar, BirimMaliyet, kumTers, StokMiktar, acilisMiktar
+        INTO #katman
+        FROM Acilis
+        WHERE acilisMiktar > 0;
 
         /* 4) Acilis oncesi temizlik:
               - ACILIS/ACILIS_TAMAMLA: sadece envanter tarihi
@@ -778,6 +960,10 @@ BEGIN
                     ORDER BY a.GirisTarihi DESC, a.BelgeNo DESC
                 ) AS rn
             FROM #alislar a
+            -- FIYAT 0 OLAMAZ (fifo-domain §6): 0/negatif degerli son-alis satiri
+            -- (numune, hediye, duzeltme irsaliyesi — fatAyr.ehTutarN=0) atlanir,
+            -- en son SIFIRDAN FARKLI alis secilir. 14_V2 ile ayni guard.
+            WHERE a.BirimMaliyet > 0
         )
         INSERT INTO dbo.FifoKatman
             (StkId, GirisTarihi, KaynakTip, BelgeNo, BelgeTarihi, FirmaId,
@@ -839,6 +1025,8 @@ BEGIN
                     ORDER BY m.GirisTarihi DESC, m.BelgeNo DESC
                 ) AS rn
             FROM #merkezAlis m
+            -- FIYAT 0 OLAMAZ (§6): merkez tier'inda da 0/negatif alis atlanir. 14_V2 ile ayni.
+            WHERE m.BirimMaliyet > 0
         )
         SELECT
             StkId, GirisTarihi, BelgeNo, BelgeTarihi, FirmaId, BirimMaliyet
@@ -996,7 +1184,11 @@ BEGIN
                 FROM Aylik a
                 JOIN #eksikKalan e ON e.StkId = a.StkId
             )
-            SELECT * INTO #aylikAlloc FROM Alloc WHERE ayMiktar > 0;
+            -- Acik kolon listesi (SELECT * yasak).
+            SELECT StkId, ayBitis, ayMiktar
+            INTO #aylikAlloc
+            FROM Alloc
+            WHERE ayMiktar > 0;
 
             IF OBJECT_ID('tempdb..#sabitFiyat', 'U') IS NOT NULL DROP TABLE #sabitFiyat;
             CREATE TABLE #sabitFiyat (
@@ -2027,6 +2219,12 @@ GO
 PRINT 'sp_Fifo_Calistir proseduru olusturuldu';
 GO
 
+-- =============================================================
+-- ACILIS CALISTIRMA WRAPPER - dbo.sp_Fifo_AcilisCalistir
+-- Acilis islemini ayri run/calismayla izlemek icin
+-- =============================================================
+
+GO
 
 -- =============================================================
 -- AYLIK CALISTIRMA WRAPPER - dbo.sp_Fifo_AylikCalistir
@@ -2068,6 +2266,16 @@ GO
 
 PRINT 'sp_Fifo_AylikCalistir proseduru olusturuldu';
 GO
+
+-- =============================================================
+-- AYLIK RUTIN PROSEDURU - dbo.sp_Fifo_AylikRutin
+-- Tek seferlik acilis HARIC - sadece alis katmanlari + FIFO cikis
+-- Her ay duzenli calistirilir (job/scheduler ile)
+-- =============================================================
+
+GO
+
+
 
 GO
 PRINT '======== 04 Sentetik Fallback ========';
@@ -2757,16 +2965,10 @@ BEGIN
     -- PARAMETRE VALIDASYONU
     -- ============================================================
     IF @EnvanterTarihi IS NULL
-    BEGIN
-        RAISERROR('Envanter tarihi bos olamaz', 16, 1);
-        RETURN;
-    END
+        THROW 50001, 'sp_Fifo_AcilisCalistir_V2: @EnvanterTarihi bos olamaz.', 1;
 
     IF @EnvanterTarihi > GETDATE()
-    BEGIN
-        RAISERROR('Envanter tarihi gelecek tarih olamaz', 16, 1);
-        RETURN;
-    END
+        THROW 50002, 'sp_Fifo_AcilisCalistir_V2: @EnvanterTarihi gelecek tarih olamaz.', 1;
 
 
     DECLARE @baslangicTarihi DATE = DATEFROMPARTS(2021, 5, 31);
@@ -2775,6 +2977,20 @@ BEGIN
     DECLARE @stepOrder INT;
     DECLARE @fazBaslangic DATETIME2(3) = SYSDATETIME();
     DECLARE @urunSayisi INT = 0;
+
+    -- ============================================================
+    -- HATA DEGISKENLERI
+    -- ERROR_MESSAGE() / ERROR_LINE() / ERROR_SEVERITY() / ERROR_STATE()
+    -- YALNIZCA CATCH blogu icinde gecerlidir; blok disinda NULL doner.
+    -- Bu yuzden degerler CATCH icinde yakalanir, ortak HataYonetimi blogunda
+    -- sadece KULLANILIR. (Onceki surumde GOTO ile bloktan cikildigi icin
+    -- hata metni NULL oluyor, log bos yaziliyor ve orijinal hata kayboluyordu.)
+    -- ============================================================
+    DECLARE @ErrorNumber   INT            = NULL;
+    DECLARE @ErrorMessage  NVARCHAR(4000) = NULL;
+    DECLARE @ErrorSeverity INT            = NULL;
+    DECLARE @ErrorState    INT            = NULL;
+    DECLARE @ErrorLine     INT            = NULL;
 
     -- ============================================================
     -- FAZ 1: ENVANTER SNAPSHOT + ALISLAR
@@ -2949,6 +3165,14 @@ BEGIN
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+
+        -- Hata bilgisini CATCH icindeyken yakala (disarida NULL doner).
+        SELECT @ErrorNumber   = ERROR_NUMBER(),
+               @ErrorMessage  = ERROR_MESSAGE(),
+               @ErrorSeverity = ERROR_SEVERITY(),
+               @ErrorState    = ERROR_STATE(),
+               @ErrorLine     = ERROR_LINE();
+
         GOTO HataYonetimi;
     END CATCH
 
@@ -3216,6 +3440,14 @@ BEGIN
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+
+        -- Hata bilgisini CATCH icindeyken yakala (disarida NULL doner).
+        SELECT @ErrorNumber   = ERROR_NUMBER(),
+               @ErrorMessage  = ERROR_MESSAGE(),
+               @ErrorSeverity = ERROR_SEVERITY(),
+               @ErrorState    = ERROR_STATE(),
+               @ErrorLine     = ERROR_LINE();
+
         GOTO HataYonetimi;
     END CATCH
 
@@ -3483,8 +3715,15 @@ BEGIN
                  GirisMiktar, KalanMiktar, BirimMaliyet, Durum)
             SELECT
                 k.StkId, k.AyBitis, 'AYLIK_DEVIR', NULL, k.AyBitis, NULL,
-                k.AyMiktar, k.AyMiktar, ISNULL(k.BirimMaliyet, 0), k.Durum
-            FROM #aylikKatman k;
+                k.AyMiktar, k.AyMiktar, k.BirimMaliyet, k.Durum
+            FROM #aylikKatman k
+            -- FIYAT 0 OLAMAZ (fifo-domain.md §6): fiyatsiz satir 0 maliyetle YAZILMAZ.
+            -- Kardes SP 02_V2 sp_Fifo_AcilisMaliyetlendir ayni filtreyi kullaniyor.
+            -- Burada elenen urun katmansiz kalir ve ADIM 5.5 garanti tier'i tarafindan
+            -- (SonAlis -> SatisFiyat x kategori-oran -> kategori-ort -> devre-disi)
+            -- fiyatlandirilir. Eskiden ISNULL(...,0) ile 0 maliyet yaziliyordu.
+            WHERE k.BirimMaliyet IS NOT NULL
+              AND k.BirimMaliyet > 0;
 
             DECLARE @aylikDevir INT = @@ROWCOUNT;
             PRINT '      Aylik devir katman: ' + CAST(@aylikDevir AS VARCHAR(10));
@@ -3559,14 +3798,19 @@ BEGIN
                           WHERE k.StkId = s.StkId AND k.GirisTarihi <= @EnvanterTarihi);
         DECLARE @garantiInsert INT = @@ROWCOUNT;
 
-        /* (c) Impute EDILEMEYEN (bm NULL/<=0) acilis-stok urunleri → DEVRE DISI (non-inventory/obsolete) */
+        /* (c) Impute EDILEMEYEN (bm NULL/<=0) VE HALA KATMANSIZ acilis-stok urunleri → DEVRE DISI.
+               NOT EXISTS FifoKatman kosulu ZORUNLU: zaten baska tier'dan katmani olan urunler
+               bkm.UrunBilgi'de SonAlis=0 / kategori eslesme yoksa bm=NULL gelebilir ama katmanlari
+               gercek (AYLIK_DEVIR/ACILIS_TAMAMLA vs) → devre-disi YAPILMAMALI (Busso bug, 2026-06-19). */
         INSERT INTO dbo.FifoDevreDisiUrunler (StkId, Sebep, EkleyenKullanici, EklenmeTarihi)
         SELECT DISTINCT i.StkId,
                N'GARANTI: fiyatlanamaz (alis/fytOzl/SatisFiyat/kategori yok) → non-inventory/obsolete',
                'acilis-v2-garanti', SYSDATETIME()
         FROM #imp i
         WHERE (i.bm IS NULL OR i.bm <= 0)
-          AND NOT EXISTS (SELECT 1 FROM dbo.FifoDevreDisiUrunler d WHERE d.StkId = i.StkId);
+          AND NOT EXISTS (SELECT 1 FROM dbo.FifoDevreDisiUrunler d WHERE d.StkId = i.StkId)
+          AND NOT EXISTS (SELECT 1 FROM dbo.FifoKatman k
+                          WHERE k.StkId = i.StkId AND k.GirisTarihi <= @EnvanterTarihi);
         DECLARE @garantiDevreDisi INT = @@ROWCOUNT;
 
         /* Devre-disi yapilanlarin sifir-maliyet katmanlarini sil (henuz cikis yok → FK guvenli) */
@@ -3687,6 +3931,14 @@ BEGIN
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+
+        -- Hata bilgisini CATCH icindeyken yakala (disarida NULL doner).
+        SELECT @ErrorNumber   = ERROR_NUMBER(),
+               @ErrorMessage  = ERROR_MESSAGE(),
+               @ErrorSeverity = ERROR_SEVERITY(),
+               @ErrorState    = ERROR_STATE(),
+               @ErrorLine     = ERROR_LINE();
+
         GOTO HataYonetimi;
     END CATCH
 
@@ -3694,11 +3946,13 @@ BEGIN
     -- HATA YONETIMI (tum fazlardan ortak)
     -- ============================================================
     HataYonetimi:
-        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
-        DECLARE @ErrorSeverity INT = ERROR_SEVERITY();
-        DECLARE @ErrorState INT = ERROR_STATE();
-        DECLARE @ErrorLine INT = ERROR_LINE();
-        DECLARE @runMessage VARCHAR(500) = SUBSTRING(CONVERT(VARCHAR(500), @ErrorMessage), 1, 500);
+        -- Degiskenler CATCH icinde dolduruldu (yukaridaki DECLARE blogu).
+        -- Burada ERROR_*() cagirmak YASAK: CATCH disindayiz, hepsi NULL doner.
+        DECLARE @ErrMetin NVARCHAR(4000) =
+            ISNULL(@ErrorMessage, N'<hata metni alinamadi>');
+
+        DECLARE @runMessage VARCHAR(500) =
+            SUBSTRING(CONVERT(VARCHAR(500), @ErrMetin), 1, 500);
 
         IF @IslemId IS NOT NULL AND @stepKey IS NOT NULL
             EXEC dbo.sp_MaliyetAdimYaz
@@ -3709,13 +3963,35 @@ BEGIN
                 @Durum = 'HATA',
                 @Mesaj = @runMessage;
 
-        INSERT INTO dbo.FifoSorunluStoklar
-            (StkId, EnvanterTarihi, StokMiktar, SorunTipi, Aciklama)
-        VALUES (0, @EnvanterTarihi, 0, 'PROSEDUR_HATASI',
-                'sp_Fifo_AcilisCalistir_V2 - Satir: ' + CAST(@ErrorLine AS VARCHAR(10)) +
-                ' - ' + @ErrorMessage);
+        -- Sorun kaydini yazmak ASIL HATAYI EZMEMELI.
+        -- PK (EnvanterTarihi, MekanId, StkId, SorunTipi) sabit oldugu icin ayni tarihte
+        -- ikinci bir hata olustugunda duz INSERT 2627 (PK ihlali) verir; XACT_ABORT ON
+        -- ile batch orada olur ve asagidaki THROW hic calismaz — cagirana gercek hata
+        -- yerine "Violation of PRIMARY KEY" doner. Bu yuzden once sil, sonra yaz ve
+        -- tum blogu kendi TRY/CATCH'ine al.
+        BEGIN TRY
+            DELETE FROM dbo.FifoSorunluStoklar
+            WHERE EnvanterTarihi = @EnvanterTarihi
+              AND MekanId = 0 AND StkId = 0 AND SorunTipi = 'PROSEDUR_HATASI';
 
-        RAISERROR(@ErrorMessage, @ErrorSeverity, @ErrorState);
+            -- CONCAT kullan: '+' ile NULL bir parca tum metni NULL yapar ve log bos kalir.
+            INSERT INTO dbo.FifoSorunluStoklar
+                (StkId, EnvanterTarihi, StokMiktar, SorunTipi, Aciklama)
+            VALUES (0, @EnvanterTarihi, 0, 'PROSEDUR_HATASI',
+                    CONVERT(NVARCHAR(500),
+                        CONCAT(N'sp_Fifo_AcilisCalistir_V2 - Hata No: ', @ErrorNumber,
+                               N' - Satir: ', @ErrorLine,
+                               N' - ', @ErrMetin)));
+        END TRY
+        BEGIN CATCH
+            -- Log yazilamadi; asil hatayi kaybetme, sadece bildir.
+            PRINT 'UYARI: PROSEDUR_HATASI sorun kaydi yazilamadi: ' + ISNULL(ERROR_MESSAGE(), N'?');
+        END CATCH;
+        -- ^ Noktali virgul ZORUNLU: T-SQL, THROW'dan onceki ifadenin ';' ile
+        --   bitmesini ister, yoksa "Incorrect syntax near 'THROW'" verir.
+
+        -- Orijinal hata numarasi mesaja gomuldu; cagirana hata YUTULMADAN iletilir.
+        THROW 50000, @ErrMetin, 1;
 END
 GO
 

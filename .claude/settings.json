@@ -1,0 +1,51 @@
+{
+  "_aciklama": "Paylasilan ayarlar. SIR ICERMEZ. Kisisel izinler ve kimlik bilgileri .claude/settings.local.json icinde kalir (gitignore).",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/session-start.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/pre-compact.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/tier3-plan-gate.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/pre-edit-advisor-gate.sh"
+          }
+        ],
+        "matcher": "Edit|Write|MultiEdit"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/post-edit-antipattern.sh"
+          }
+        ],
+        "matcher": "Edit|Write|MultiEdit"
+      }
+    ]
+  }
+}

@@ -37,9 +37,36 @@ if [ -f "$MEM/session_log.md" ]; then
   echo ""
 fi
 
+# ── DANISMAN ISARETLERINI TEMIZLE ──
+# Kapi "bu OTURUMDA ilk dokunus" iddia ediyor; isaret kalici olursa iddia
+# YALAN olur. Bel'de olculdu: bes isaret 11 gun boyunca silinmedi ve kapi
+# hicbir seyi bloklamadi. Burada her oturum basinda sifirlaniyor.
+ISARET_DIZIN="$REPO/.claude/.advisor-marks"
+if [ -d "$ISARET_DIZIN" ]; then
+  silinen=$(find "$ISARET_DIZIN" -maxdepth 1 -type f 2>/dev/null | wc -l | tr -d ' ')
+  find "$ISARET_DIZIN" -maxdepth 1 -type f -delete 2>/dev/null
+  [ "${silinen:-0}" -gt 0 ] && echo "### Danışman işaretleri sıfırlandı ($silinen alan)" && echo ""
+fi
+
+# ── ACIK PLAN (Tier 3 kapisi bunu arar) ──
+echo "### Açık plan (Tier 3)"
+acik=""
+for f in "$REPO"/plans/[0-9]*.md; do
+  [ -e "$f" ] || continue
+  if grep -qiE '^\*\*Durum:\*\*.*(Onaylandı|Onaylandi|Uygulamada)' "$f" 2>/dev/null; then
+    acik="$acik $(basename "$f")"
+  fi
+done
+if [ -n "$acik" ]; then echo "AÇIK:$acik"; else echo "(yok — Tier 3 işte önce plan yaz)"; fi
+echo ""
+
 echo "### Kritik kurallar"
+echo "- Tier sistemi + plan zorunluluğu: .claude/rules/plan-first.md"
+echo "- Danış → Yap → Kontrol Ettir → Smoke: .claude/rules/calisma-protokolu.md"
+echo "- Ölçtüm mü çıkardım mı: .claude/rules/olctum-mu-cikardim-mi.md"
 echo "- Hafıza/oturum protokolü: .claude/rules/memory-protocol.md"
 echo "- Agent delegasyon + model katmanı: .claude/rules/agent-usage.md"
+echo "- Ajan brifingi (5 madde): .claude/rules/danisman-brifingi.md"
 echo "- Çalışmalar LOKAL DB üstünde (canlı 192.168.40.201 sıkıntılı): memory/feedback_local_db.md"
 echo "- FIFO invariant doğrulama: /fifo-dogrula · FIFO mantık bulguları: memory/fifo_logic_findings.md"
 echo "- Görev tipine göre memory/ routing: memory/MAIN_INDEX.md"

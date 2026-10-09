@@ -1,0 +1,17 @@
+IF OBJECT_ID('dbo.FifoKatman','U') IS NOT NULL DROP TABLE dbo.FifoKatman;
+SELECT * INTO #x FROM y;
+BEGIN CATCH
+    GOTO HataYonetimi;
+END CATCH
+HataYonetimi:
+    DECLARE @m NVARCHAR(100) = ERROR_MESSAGE();
+RAISERROR('bir sey', 16, 1);
+INSERT INTO dbo.FifoKatman (BirimMaliyet) SELECT ISNULL(k.BirimMaliyet, 0) FROM #a k;
+SELECT 'x' + @ErrMsg;
+MERGE dbo.A AS t USING dbo.B AS s ON 1=1;
+SELECT a FROM t WITH (NOLOCK);
+CREATE OR ALTER PROCEDURE dbo.sp_Kotu AS BEGIN SELECT 1 END
+SELECT SUM(a)/SUM(b) FROM t;
+SELECT x FROM h WHERE h.ehMekan IN (1, 4477);
+END CATCH
+THROW 50000, 'x', 1;

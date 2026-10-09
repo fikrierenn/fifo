@@ -1,0 +1,152 @@
+{
+  "_aciklama": "FIFO KOSULABILIR DEGISMEZLER. Her kayit canli veride yeniden kosar. Calistir: pwsh tools/fifo-degismez.ps1",
+  "_neden": "last_verified + ttl bir BAYRAKTIR, bir OLCUM degil: suresi doldugunu gormek icin birinin bakmasi gerekir ve bakilmaz. Burada gercek KOSAR. Yazilan gercek komutla yeniden kosturulabiliyorsa kosturulur.",
+  "_surum": "1.0",
+  "_guncelleme": "2026-09-10",
+  "_sozlesme": "Cikis kodu 0 = hepsi gecti, 1 = KIRIK (olcum kostu, deger farkli), 2 = KOSAMADI (baglanti/SQL/NULL). Kosamamak YESIL DEGILDIR.",
+  "_yeni_kayit_kurali": "Beklenen degeri bilerek boz, KIRMIZI oldugunu GOR, sonra geri al. Kirilabildigi kanitlanmamis bir test, test degildir. Kanit icin: -Sadece <id>",
+  "_degismez_vs_olcum": "Yazilir: 'BirimMaliyet 0 olamaz', 'KaynakTip kumesi kapali'. Yazilmaz: 'Ocak SMM 46,65M' (bu bir OLCUM, evidence alanina tarihli yazilir).",
+
+  "degismezler": [
+    {
+      "id": "katman-maliyet-pozitif",
+      "db": "BKMMaliyet",
+      "soru": "FifoKatman icinde BirimMaliyet <= 0 olan katman var mi?",
+      "neden": "fifo-domain.md §6 — FIYAT 0 OLAMAZ. Sifir maliyet = %100 marj = sessiz yanlis brut kar. Gecmiste 1-TL sabit fallback Ocak'i +1,37M sisirmisti (272 kalem).",
+      "sql": "SELECT COUNT(*) FROM dbo.FifoKatman WHERE BirimMaliyet <= 0",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-10 -> 0 (BKMMaliyet_Run, tam pipeline sonrasi, 563.549 katman)"
+    },
+    {
+      "id": "cikis-maliyet-pozitif",
+      "db": "BKMMaliyet",
+      "soru": "FifoCikisDetay icinde BirimMaliyet <= 0 olan cikis var mi?",
+      "neden": "Cikis birim maliyeti katmandan KOPYALANIR. Katman pozitifse cikis da pozitif olmak zorunda. Ihlal, SMM'in sessizce eksik hesaplandigini gosterir.",
+      "sql": "SELECT COUNT(*) FROM dbo.FifoCikisDetay WHERE BirimMaliyet <= 0",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-10 -> 0 (267.725 cikis satiri)"
+    },
+    {
+      "id": "katman-tuketim-mutabakati",
+      "db": "BKMMaliyet",
+      "soru": "GirisMiktar - toplam tuketim = KalanMiktar her katmanda tutuyor mu? (C1)",
+      "neden": "FIFO defterinin temel mutabakati. Tutmuyorsa katman ya iki kez tuketilmis ya da bir cikis kayda gecmemistir; iki durumda da SMM yanlis.",
+      "sql": "SELECT COUNT(*) FROM (SELECT k.KatmanId FROM dbo.FifoKatman k LEFT JOIN (SELECT KatmanId, SUM(Miktar) AS T FROM dbo.FifoCikisDetay GROUP BY KatmanId) c ON c.KatmanId = k.KatmanId WHERE ABS(k.GirisMiktar - ISNULL(c.T,0) - k.KalanMiktar) > 0.0001 AND k.KaynakTip <> 'IADE') x",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-10 -> 0"
+    },
+    {
+      "id": "kalan-miktar-sinirlari",
+      "db": "BKMMaliyet",
+      "soru": "0 <= KalanMiktar <= GirisMiktar her katmanda saglaniyor mu? (C2)",
+      "neden": "CHECK constraint bunu zorluyor; degismez, constraint'in DEVRE DISI birakilip birakilmadigini da yakalar.",
+      "sql": "SELECT COUNT(*) FROM dbo.FifoKatman WHERE KalanMiktar < 0 OR KalanMiktar > GirisMiktar",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-10 -> 0"
+    },
+    {
+      "id": "cikis-katman-maliyet-esitligi",
+      "db": "BKMMaliyet",
+      "soru": "Cikis birim maliyeti, tukettigi katmanin birim maliyetine esit mi? (C3)",
+      "neden": "Cikis maliyeti YENIDEN HESAPLANMAZ, katmandan kopyalanir. Fark varsa bir yerde ortalama/tahmin karismistir.",
+      "sql": "SELECT COUNT(*) FROM dbo.FifoCikisDetay c JOIN dbo.FifoKatman k ON k.KatmanId = c.KatmanId WHERE ABS(c.BirimMaliyet - k.BirimMaliyet) > 0.000001",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-10 -> 0"
+    },
+    {
+      "id": "orphan-cikis-yok",
+      "db": "BKMMaliyet",
+      "soru": "Katmani olmayan cikis satiri var mi? (C4)",
+      "neden": "FK zorluyor; degismez FK'nin NOCHECK ile gevsetilip gevsetilmedigini de yakalar. Orphan cikis = kaynagina izlenemeyen SMM.",
+      "sql": "SELECT COUNT(*) FROM dbo.FifoCikisDetay c WHERE NOT EXISTS (SELECT 1 FROM dbo.FifoKatman k WHERE k.KatmanId = c.KatmanId)",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-10 -> 0"
+    },
+    {
+      "id": "katman-constraint-siki-ve-guvenilir",
+      "db": "BKMMaliyet",
+      "soru": "CK_FifoKatman_BirimMaliyet dogru tanimla, ETKIN ve GUVENILIR mi?",
+      "neden": "Constraint 'var mi' diye ISIMLE sorulmaz. WITH NOCHECK ile eklenmisse gecmis veri denetlenmemistir; disable edilmisse hicbir sey korumaz. Uc kosul birden bakilir.",
+      "sql": "SELECT COUNT(*) FROM sys.check_constraints WHERE parent_object_id = OBJECT_ID('dbo.FifoKatman') AND name = 'CK_FifoKatman_BirimMaliyet' AND definition = '([BirimMaliyet]>(0))' AND is_disabled = 0 AND is_not_trusted = 0",
+      "karsilastirma": "esit",
+      "beklenen": 1,
+      "dogrulandi": "2026-09-10 -> 1 (BKMMaliyet_Run; dolu DB'ye master deploy'unda kuruldu)"
+    },
+    {
+      "id": "cikis-constraint-siki-ve-guvenilir",
+      "db": "BKMMaliyet",
+      "soru": "CK_FifoCikisDetay_BirimMaliyet dogru tanimla, ETKIN ve GUVENILIR mi?",
+      "neden": "§6 kapisinin cikis tarafi. Yalniz katmanda zorlamak yetmez; cikis satiri ayri bir INSERT yolundan gelir.",
+      "sql": "SELECT COUNT(*) FROM sys.check_constraints WHERE parent_object_id = OBJECT_ID('dbo.FifoCikisDetay') AND name = 'CK_FifoCikisDetay_BirimMaliyet' AND definition = '([BirimMaliyet]>(0))' AND is_disabled = 0 AND is_not_trusted = 0",
+      "karsilastirma": "esit",
+      "beklenen": 1,
+      "dogrulandi": "2026-09-10 -> 1"
+    },
+    {
+      "id": "kaynaktip-kumesi-kapali",
+      "db": "BKMMaliyet",
+      "soru": "FifoKatman.KaynakTip bilinen kume disinda deger aliyor mu?",
+      "neden": "Cikis tuketim filtresi KaynakTip listesine gore calisir (02_V2). Listede olmayan yeni bir tip cikarsa o katmanlar SESSIZCE tuketilmez ve stok sonsuza kadar havuzda kalir. Ayrica eski schema.md 'FATURA' diye var olmayan bir tip yaziyordu.",
+      "sql": "SELECT COUNT(*) FROM dbo.FifoKatman WHERE KaynakTip NOT IN ('ACILIS','ACILIS_TAMAMLA','ALIS','AYLIK_DEVIR','SENTETIK_ALIS','IADE')",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-10 -> 0; gorulen kume: ACILIS, ACILIS_TAMAMLA, ALIS, AYLIK_DEVIR, SENTETIK_ALIS, IADE"
+    },
+    {
+      "id": "acilis-mekan-12-dahil",
+      "db": "BKMMaliyet",
+      "soru": "Acilis envanterinde mekan 12 (ana depo) satirlari var mi?",
+      "neden": "fifo-domain.md §1 — mekan 12 ANA DEPO, en buyuk stok, ASLA dislanmaz. Eski V2 acilis onu disliyordu ve mekan-12 satislari STOK_YETERSIZ veriyordu (C7 bulgusu). Sifir donerse havuz seti bozulmus demektir.",
+      "sql": "SELECT COUNT(*) FROM dbo.FifoAcilisEnvanter WHERE MekanId = 12",
+      "karsilastirma": "enaz",
+      "beklenen": 1,
+      "dogrulandi": "2026-09-10 -> 26.432 satir (dagilim: 1:165.486 · 12:26.432 · 4477:170.216 · 4478:146.526)"
+    },
+    {
+      "id": "havuz-disi-mekan-yok",
+      "db": "BKMMaliyet",
+      "soru": "Acilis envanterinde havuz disi mekan var mi?",
+      "neden": "Havuz seti 1, 12, 4477, 4478. Baska bir mekan girerse acilis ile cikis kapsamlari ayrisir ve mutabakat sessizce bozulur.",
+      "sql": "SELECT COUNT(*) FROM dbo.FifoAcilisEnvanter WHERE MekanId NOT IN (1, 12, 4477, 4478)",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-10 -> 0"
+    },
+    {
+      "id": "cikis-satistutar-dolu",
+      "db": "BKMMaliyet",
+      "soru": "Cikis satirlarinda SatisTutar NULL kalan var mi?",
+      "neden": "Brut kar = SatisTutar - CikisTutar. NULL kalan satir gelire HIC girmez ve marj sessizce yukselir. Cikis SP'si artik bu kolonu yaziyor (02_V2:1156); NULL birikmesi SP'nin atladigi bir yol oldugunu gosterir.",
+      "sql": "SELECT COUNT(*) FROM dbo.FifoCikisDetay WHERE SatisTutar IS NULL",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-10 -> 0 (267.725 satirin tamami dolu)"
+    },
+    {
+      "id": "devre-disi-liste-bos-degil",
+      "db": "BKMMaliyet",
+      "soru": "FifoDevreDisiUrunler bos mu?",
+      "neden": "Tablo KALICI + ADDITIVE (fifo-domain.md §2): non-inventory kalemler (poset, hediye ceki, gider) burada tutulur ve TRUNCATE edilmez. Bosalirsa gider kalemleri maliyetlenmeye baslar ve brut kar sisersizce degisir.",
+      "sql": "SELECT COUNT(*) FROM dbo.FifoDevreDisiUrunler",
+      "karsilastirma": "enaz",
+      "beklenen": 70,
+      "dogrulandi": "2026-09-10 -> 77 (tam pipeline sonrasi degismedi; GARANTI tier yeni otomatik devre-disi eklemedi)"
+    },
+    {
+      "id": "cikis-miktar-pozitif",
+      "db": "BKMMaliyet",
+      "soru": "FifoCikisDetay.Miktar <= 0 olan satir var mi?",
+      "neden": "CHECK constraint zorluyor. Sifir/negatif cikis miktari, CikisTutar hesabini (Miktar * BirimMaliyet) anlamsiz yapar.",
+      "sql": "SELECT COUNT(*) FROM dbo.FifoCikisDetay WHERE Miktar <= 0",
+      "karsilastirma": "esit",
+      "beklenen": 0,
+      "dogrulandi": "2026-09-10 -> 0"
+    }
+  ]
+}

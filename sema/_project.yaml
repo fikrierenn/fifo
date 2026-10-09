@@ -1,0 +1,31 @@
+# PROJECT IDENTITY — repo-local. The engine is shared (D:\Dev\sema); data and identity are not.
+#
+# CONVENTION: structural names (file names, section headings, the keys in this file) are
+# ENGLISH. Record CONTENT is Turkish. One convention, no dialect switch.
+project: fifo
+name: "FIFO Maliyet — BKMMaliyet (FIFO + ortalama maliyet katmanları)"
+
+# Data sources (same names as the servers declared below)
+sources: [yerel]
+
+# SERVERS — repo-local. The shared engine must NOT carry this repo's server names
+# (plan-45 three layers: core / data / profile). `integrated: true` = Windows identity,
+# i.e. NO password anywhere — this satisfies the single-identity-path contract by
+# having no credential at all, rather than by hiding one.
+#
+# ⚠ BT-FIKRI is THIS machine and it is the LIVE copy of the FIFO engine. The `BKMMaliyet`
+# on the ERP server (192.168.40.201) is a DIFFERENT, older state — 550.387 layers /
+# 749,3M ₺ there vs 658.518 / 480,5M ₺ here (measured 2026-09-11). Never mix the two:
+# a FIFO figure without saying WHICH copy it came from is incomplete.
+servers:
+  yerel:
+    host: BT-FIKRI
+    database: BKMMaliyet
+    integrated: true
+
+# Where this repo's CODE lives — `sema kapsam` counts how many files reference a record.
+# The scope is DECLARED, never guessed.
+code_paths:
+  - v2-production
+  - tools
+  - raporlar

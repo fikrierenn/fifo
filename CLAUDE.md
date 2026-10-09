@@ -1,5 +1,11 @@
 # FIFO Maliyet Projesi — CLAUDE.md
 
+<!-- merkez-bildirimi -->
+> ⚠ **KURALLAR ARTIK MERKEZDE.** Kopyalamak yerine işaret ediyoruz.
+> Oturum başında oku: [`.claude/MERKEZ-BILDIRIMI.md`](.claude/MERKEZ-BILDIRIMI.md)
+> Kanonik kurallar: `../claude-context-template/templates/.claude/rules/_universal/`
+<!-- /merkez-bildirimi -->
+
 > **Hafıza Mimarisi**: Hiyerarşik context (3 katman).
 > Bu dosya (Katman 1) her session okunur. Detaylar `.claude/CLAUDE.md` index'i üzerinden sub-file'larda.
 > Sub-file'lar: `C:\Users\fikri.eren\.claude\projects\d--Dev-fifo\memory\MAIN_INDEX.md`

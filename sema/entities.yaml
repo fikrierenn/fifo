@@ -1,0 +1,86 @@
+# FIFO Semantik Katman — VARLIKLAR
+# Makine-okunur. Bu dosya 2026-09-11'de açıldı; ilk kayıtlar `sema kostur`un
+# 14 değişmezi İLK KEZ koşturmasıyla ortaya çıktı.
+version: 1
+updated: 2026-09-11
+
+entities:
+  # ── §6 "FİYAT 0 OLAMAZ" KAPISI — veri temiz, BEKÇİ BOZUK (2026-09-11 ölçüldü) ──
+  fifo_sifir_maliyet_bekcisi:
+    uses: [entities:BKMMaliyet.dbo.FifoKatman, entities:BKMMaliyet.dbo.FifoCikisDetay]
+    type: rule
+    note: >-
+      `fifo-domain.md` §6 "FİYAT 0 OLAMAZ" diyor. Bu kuralı korumakla görevli iki CHECK
+      constraint canlıda DENETLENDİ ve İKİSİ DE KURALI KORUMUYOR. Veri bugün temiz olduğu
+      için sorun GÖRÜNMÜYOR — ama tekrarını engelleyen bir şey YOK.
+    measurement: >-
+      2026-09-11 (BT-FIKRI · BKMMaliyet): (a) `CK_FifoKatman_BirimMaliyet` VAR, `is_disabled=0`,
+      `is_not_trusted=0` — yani etkin ve güvenilir; AMA tanımı **`([BirimMaliyet]>=(0))`**,
+      yani SIFIRA İZİN VERİYOR. Kural sıfırı YASAKLIYOR. (b)
+      `CK_FifoCikisDetay_BirimMaliyet` **HİÇ YOK** (`sys.check_constraints`ta 0 kayıt) —
+      çıkış tarafı hiç korunmuyor. (c) Bugünkü veri TEMİZ: `FifoKatman` 0 satır ve
+      `FifoCikisDetay` 0 satır `BirimMaliyet <= 0`.
+    rule: >-
+      Bekçinin VARLIĞI kuralın KORUNDUĞU anlamına gelmez — tanımı da okunmalı. "Constraint
+      var mı?" diye İSİMLE sormak yetersizdir; `definition` + `is_disabled` + `is_not_trusted`
+      ÜÇÜ BİRDEN bakılır. Bu kayıt tam da o yüzden var: iki değişmez (`katman-constraint-siki-ve-guvenilir`,
+      `cikis-constraint-siki-ve-guvenilir`) bunu soruyor ve İKİSİ DE KIRMIZI.
+    details: >-
+      Bu depoda 14 değişmez YAZILIYDI ama HİÇ KOŞMUYORDU: `degismezler.json` kök anahtarı
+      `degismezler`, motor `invariants` okuyor; alan adları da Türkçeydi (`soru`/`neden`/
+      `karsilastirma`). Anahtarlar İngilizceye çevrilip `sema/_project.yaml` ile `yerel`
+      sunucu (BT-FIKRI, Integrated Security) beyan edilince 14'ü de koştu — 12 OK, 2 KIRIK.
+      README'nin kendi teşhisi ("yazılı kural kimse tarafından koşturulmuyor") bu depoda da
+      geçerliymiş.
+      2026-09-11 KAPANDI. `v2-production/01_SIFIR_MALIYET_KAPISI.sql` koşturuldu (master'ın 83-127 ve 256-284 satırlarının BİREBİR kopyası — ayrı dosya, çünkü master 4752 satır ve o an commit'siz 478+/202- değişiklik taşıyordu; §6 kapısını kapatmak için 27 objeyi deploy etmek gerekmiyordu). SONUÇ ÖLÇÜLDÜ: iki tabloda da `CK_*_BirimMaliyet` artık `([BirimMaliyet]>(0))`, `is_disabled=0`, `is_not_trusted=0`. `sema kostur` → 14 değişmez, **0 KIRIK** (önce 2 idi). Bekçinin gevşek olması bir kaza değildi: HEAD'deki (commit'li) master `CHECK (BirimMaliyet >= 0)` yazıyordu ve DB tam da onunla uyumluydu. Sıkılaştırma (`> 0`) çalışma kopyasında YAZILMIŞ ama ne commit edilmiş ne deploy edilmişti. Yani 'DB script'ten geri kalmış' değil, 'düzeltme hiç uygulanmamış'. ⚠ 00_V2_MASTER_FULL.sql'deki bu değişiklik HÂLÂ COMMIT'Lİ DEĞİL — commit'lenmezse sonraki temiz kurulum gevşek constraint'i geri getirir. ⚠ Bu düzeltme sırasında DROP çalıştı, ADD ortam izniyle engellendi ve tablolar bir süre BEKÇİSİZ kaldı. DROP+ADD ayrı izin gerektirebiliyor; doğrusu ikisini tek script/batch olarak koşturmaktı — nitekim çözüm de öyle geldi.
+    confidence: 1.0
+    evidence: "2026-09-11 — sys.check_constraints (name/is_disabled/is_not_trusted/definition) + iki tabloda BirimMaliyet <= 0 sayımı. Koşum: `sema kostur` (14 değişmez, 1 hedef)."
+    last_verified: "2026-09-11"
+
+  # ── HANGİ KOPYA? — FIFO rakamı kopya adı olmadan eksiktir ──
+  BKMMaliyet_canli_kopya:
+    uses: [entities:BKMMaliyet.dbo.FifoKatman]
+    type: measurement
+    note: >-
+      ⚠⚠ `BKMMaliyet` İKİ YERDE VAR VE AYNI ŞEY DEĞİL. Bu depo (`sqlcli.json` →
+      `Server=BT-FIKRI`) YEREL kopyayı hedefler ve CANLI olan odur. ERP sunucusundaki
+      (192.168.40.201) `BKMMaliyet` daha ESKİ bir durumdur.
+    measurement: >-
+      2026-09-11 ölçüldü — YEREL: 658.518 katman · kalan maliyet değeri **480.528.320 ₺**.
+      ERP: 550.387 katman · **749.295.869 ₺**. Fark **269 milyon ₺**; iki tarafın da son
+      `GirisTarihi` aynı (2026-01-31), yani kesim tarihi aynı, fark İÇERİKTE.
+      Yerel daha yeni: `KaynakTip='IADE'` (707 katman) YALNIZ yerelde var. ERP'de
+      `ACILIS_TAMAMLA` 89.611 katman / **466,1M ₺** (maliyeti bulunamayıp tamamlanan sınıf),
+      yerelde 35.750 / 51,9M ₺.
+    rule: >-
+      Hangi kopyada ölçüldüğünü yazmayan her FIFO rakamı EKSİKTİR. Analiz `yerel` sunucuda
+      koşar; ERP kopyası tarihsel anlık görüntüdür ve karşılaştırma dışında kullanılmaz.
+    details: >-
+      HANGİSİNİN DOĞRU OLDUĞU BURADA KARARA BAĞLANMADI. Ölçülen şey iki kopyanın FARKLI
+      olduğu ve yerelin daha yeni bir şema taşıdığıdır. "Yerel doğrudur" demek için yerel
+      koşumun üretim/satış SMM'siyle mutabakatı AYRICA ölçülmeli.
+    evidence_status: pending
+    confidence: 1.0
+    evidence: "2026-09-11 — iki kopyada da `FifoKatman GROUP BY KaynakTip` + toplam sayım."
+    last_verified: "2026-09-11"
+
+  BKMMaliyet.dbo.FifoKatman:
+    type: table
+    pk: KatmanId
+    key: [StkId, GirisTarihi, KaynakTip, GirisMiktar, KalanMiktar, BirimMaliyet, Durum]
+    grain: "ürün × giriş katmanı (FIFO maliyet havuzu, mekan-bağımsız PARTITION BY StkId)"
+    note: "Eldeki birim maliyet = SUM(KalanMiktar*BirimMaliyet)/SUM(KalanMiktar) WHERE KalanMiktar>0. `KaynakTip` kümesi `kaynaktip-kumesi-kapali` değişmeziyle korunuyor."
+    measurement: "2026-09-11 (yerel): 658.518 katman. KaynakTip dağılımı — ACILIS 567.675 / 375,9M ₺ · ALIS 53.781 / 52,5M · ACILIS_TAMAMLA 35.750 / 51,9M · IADE 707 / 165K · AYLIK_DEVIR 605 / 49K."
+    confidence: 1.0
+    evidence: "2026-09-11 — yerel BKMMaliyet sayımı."
+    last_verified: "2026-09-11"
+
+  BKMMaliyet.dbo.FifoCikisDetay:
+    type: table
+    pk: CikisId
+    key: [StkId, HareketTarihi, HareketTipi, MekanId, KatmanId, Miktar, BirimMaliyet, CikisTutar, SatisTutar]
+    grain: "satış/iade çıkış × tüketilen katman segmenti"
+    note: "marj = SatisTutar (gelir) − CikisTutar (SMM). `CikisTutar` COMPUTED = Miktar×BirimMaliyet (UPDATE edilemez). ⚠ `BirimMaliyet` üzerinde CHECK constraint YOK — bkz. entities:fifo_sifir_maliyet_bekcisi."
+    confidence: 1.0
+    evidence: "2026-09-11 — yerel BKMMaliyet sys.check_constraints taraması + değişmez koşumu."
+    last_verified: "2026-09-11"
