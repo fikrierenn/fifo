@@ -1,0 +1,6 @@
+#!/bin/sh
+# Orkestra pre-commit — hazırlanmış dosyalar ajan hook'larıyla aynı kurallardan geçer.
+# --no-verify ile atlamak Orkestra akışında yasaktır. Yol: ORKESTRA_HOME, yoksa kardeş ../orkestra (specs/007).
+ORK="${ORKESTRA_HOME:-$(cd "$(git rev-parse --show-toplevel)/.." && pwd)/orkestra}"
+[ -f "$ORK/ci/ork.py" ] || { echo "Orkestra kapısı KOŞAMADI: Orkestra bulunamadı — ORKESTRA_HOME tanımlayın ya da kardeş ../orkestra klonlayın. Kapı sessizce geçmez." >&2; exit 1; }
+exec python "$ORK/ci/ork.py" kapilar --staged

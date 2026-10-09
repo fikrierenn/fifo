@@ -45,3 +45,5 @@ eski/v2/hangfire/appsettings.Development.json
 eski/v2/hangfire/appsettings.Production.json
 eski/v2/.claude/settings.local.json
 *.out
+# Orkestra çalışma alanı (defterler, raporlar, test kilitleri)
+.orkestra/

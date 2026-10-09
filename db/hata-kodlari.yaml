@@ -1,0 +1,10 @@
+# Hedef projede db/hata-kodlari.yaml olarak kopyalanır. SQL THROW numaraları ve .NET hata sözlüğü tek kaynaktan.
+# Kurallar: SP-007 (THROW 50000–59999), ERR-005 (merkezi sözlük)
+araliklar:
+  stok: 51000-51999
+  satis: 52000-52999
+  finans: 53000-53999
+  genel: 50000-50999
+kodlar:
+  50001: { mesaj: "Beklenmeyen doğrulama hatası.", http: 400 }
+  # 51001: { mesaj: "Transfer miktarı sıfırdan büyük olmalı.", http: 400, kaynak: "specs/012-stok-transfer AC-2" }

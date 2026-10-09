@@ -1,0 +1,5 @@
+#!/bin/sh
+# Orkestra CLI — ayrıntı: ./ork yardim. Yol: ORKESTRA_HOME, yoksa kardeş ../orkestra (specs/007, A13).
+ORK="${ORKESTRA_HOME:-$(cd "$(dirname "$0")/.." && pwd)/orkestra}"
+[ -f "$ORK/ci/ork.py" ] || { echo "Orkestra bulunamadı: ORKESTRA_HOME tanımlayın ya da Orkestra'yı bu projenin kardeşi ../orkestra olarak klonlayın." >&2; exit 2; }
+exec python "$ORK/ci/ork.py" "$@"

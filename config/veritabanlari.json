@@ -1,0 +1,19 @@
+{
+  "_aciklama": "SQL denetçi (sql_denetle.py) ve roller hedef DB bilgisini buradan okur. Dosya başında `-- ork:hedef-db <anahtar>` yönergesi. Bilinmeyen DB = compat 110 varsayılır. /tanit gerçek değerleri önerir. 'test: true' olan veritabanlarına sqlcmd ile yazma komut korumasına takılmaz; diğerleri kullanıcı onayı ister.",
+  "EncoreMerkez": {
+    "compat": 110,
+    "collation": "Turkish_CI_AS",
+    "not": "Kaynak: sql-server-uzmani skill'i (compat 110). Collation /tanit ile doğrulanacak."
+  },
+  "ODAKJOKER": {
+    "compat": 110,
+    "linked_server": true,
+    "tarih_bicimi": "ISO_YYYYMMDD",
+    "not": "Linked server. Compat seviyesi doğrulanmadı (VARSAYILAN en kısıtlı)."
+  },
+  "OrkestraTest": {
+    "compat": 150,
+    "test": true,
+    "not": "VARSAYILAN test veritabanı adı — tSQLt ve entegrasyon testleri; yazma serbest. Gerçek adı acik-kararlar T2."
+  }
+}
