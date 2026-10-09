@@ -39,3 +39,9 @@ coverage/
 .claude/settings.local.json
 # Danisman kapisi isaretleri — oturum-yerel, her SessionStart'ta sifirlanir
 .claude/.advisor-marks/
+
+# eski/v2 taşıması sonrası (yerel ayar dosyaları şifre içerir)
+eski/v2/hangfire/appsettings.Development.json
+eski/v2/hangfire/appsettings.Production.json
+eski/v2/.claude/settings.local.json
+*.out
